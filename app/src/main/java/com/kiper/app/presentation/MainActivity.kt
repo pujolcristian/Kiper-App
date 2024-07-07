@@ -28,7 +28,8 @@ class MainActivity : AppCompatActivity() {
         Manifest.permission.INTERNET,
         Manifest.permission.WRITE_EXTERNAL_STORAGE,
         Manifest.permission.READ_EXTERNAL_STORAGE,
-        Manifest.permission.RECEIVE_BOOT_COMPLETED
+        Manifest.permission.RECEIVE_BOOT_COMPLETED,
+        Manifest.permission.READ_PHONE_STATE
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
