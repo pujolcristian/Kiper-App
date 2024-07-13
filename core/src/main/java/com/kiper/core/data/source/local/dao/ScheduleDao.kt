@@ -4,13 +4,19 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.kiper.core.data.source.local.entity.Schedule
+import com.kiper.core.data.source.local.entity.ScheduleEntity
+import kotlinx.coroutines.flow.Flow
+
 
 @Dao
 interface ScheduleDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSchedule(schedule: Schedule)
+    suspend fun saveAll(schedules: List<ScheduleEntity>)
 
-    @Query("SELECT * FROM Schedule")
-    suspend fun getSchedules(): List<Schedule>
+    @Query("SELECT * FROM schedules")
+    fun getAll(): Flow<List<ScheduleEntity>>
+
+    @Query("DELETE FROM schedules")
+    suspend fun deleteAll()
 }
+

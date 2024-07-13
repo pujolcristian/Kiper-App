@@ -1,22 +1,32 @@
 package com.kiper.core.di
 
 import android.content.Context
+import androidx.room.Room
 import androidx.work.WorkManager
-import com.kiper.core.audio.AudioRecorder
 import com.kiper.core.data.ApiService
 import com.kiper.core.data.repository.AudioRepositoryImpl
 import com.kiper.core.data.repository.NetworkRepositoryImpl
+import com.kiper.core.data.source.local.dao.AudioRecordingDao
+import com.kiper.core.data.source.local.dao.ScheduleDao
+import com.kiper.core.data.source.local.db.AppDatabase
+import com.kiper.core.data.source.remote.AudioLocalDataSource
+import com.kiper.core.data.source.remote.AudioRemoteDataSource
 import com.kiper.core.domain.repository.AudioRepository
 import com.kiper.core.domain.repository.NetworkRepository
-import com.kiper.core.domain.usecase.StartRecordingUseCase
-import com.kiper.core.domain.usecase.StopRecordingUseCase
+import com.kiper.core.domain.usecase.DeleteRecordingUseCase
+import com.kiper.core.domain.usecase.GetDeviceSchedulesUseCase
+import com.kiper.core.domain.usecase.GetRecordingsForDayUseCase
+import com.kiper.core.domain.usecase.SaveRecordingUseCase
 import com.kiper.core.domain.usecase.UploadAudioUseCase
+import com.kiper.core.framework.worker.audioRecorder.AndroidAudioRecorder
+import com.kiper.core.framework.worker.audioRecorder.AudioRecorder
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
@@ -28,9 +38,24 @@ object CoreModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(): Retrofit {
+    fun provideOkHttpClient(): OkHttpClient {
+        val logging = HttpLoggingInterceptor()
+        logging.setLevel(HttpLoggingInterceptor.Level.BODY)
+
+        return OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .connectTimeout(5, TimeUnit.MINUTES)
+            .readTimeout(5, TimeUnit.MINUTES)
+            .writeTimeout(5, TimeUnit.MINUTES)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://fb9143d10ce3.ngrok.app/api/device/")
+            .baseUrl("https://api.kiperconnect.com/device/")
+            .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
@@ -41,18 +66,36 @@ object CoreModule {
         return retrofit.create(ApiService::class.java)
     }
 
-    fun provideOkHttpClient(): OkHttpClient {
-        return OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS) // Tiempo de espera para establecer la conexión
-            .readTimeout(30, TimeUnit.SECONDS)    // Tiempo de espera para leer los datos
-            .writeTimeout(30, TimeUnit.SECONDS)   // Tiempo de espera para escribir los datos
-            .build()
+
+    @Provides
+    @Singleton
+    fun provideAudioRemoteDataSource(
+        apiService: ApiService,
+        scheduleDao: ScheduleDao,
+        localDataSource: AudioLocalDataSource,
+    ): AudioRemoteDataSource {
+        return AudioRemoteDataSource(
+            apiService = apiService,
+            scheduleDao = scheduleDao,
+            localDataSource = localDataSource
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideAudioRepository(
+        remoteDataSource: AudioRemoteDataSource,
+        localDataSource: AudioLocalDataSource,
+    ): AudioRepository {
+        return AudioRepositoryImpl(remoteDataSource, localDataSource)
     }
 
     @Provides
     @Singleton
     fun provideAudioRecorder(@ApplicationContext context: Context): AudioRecorder {
-        return AudioRecorder()
+        return AndroidAudioRecorder(
+            context = context
+        )
     }
 
     @Provides
@@ -67,28 +110,60 @@ object CoreModule {
         return NetworkRepositoryImpl(context)
     }
 
+
     @Provides
     @Singleton
-    fun provideAudioRepository(@ApplicationContext context: Context): AudioRepository {
-        return AudioRepositoryImpl(context)
+    fun provideGetDeviceSchedulesUseCase(audioRepository: AudioRepository): GetDeviceSchedulesUseCase {
+        return GetDeviceSchedulesUseCase(audioRepository = audioRepository)
+    }
+
+
+    @Provides
+    @Singleton
+    fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
+        return Room.databaseBuilder(
+            context,
+            AppDatabase::class.java,
+            "app_database"
+        )
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides
     @Singleton
-    fun provideStartRecordingUseCase(audioRepository: AudioRepository): StartRecordingUseCase {
-        return StartRecordingUseCase(audioRepository = audioRepository)
+    fun provideAudioRecordingDao(appDatabase: AppDatabase): AudioRecordingDao {
+        return appDatabase.audioRecordingDao()
     }
 
     @Provides
     @Singleton
-    fun provideStopRecordingUseCase(audioRepository: AudioRepository): StopRecordingUseCase {
-        return StopRecordingUseCase(audioRepository = audioRepository)
+    fun provideScheduleDao(appDatabase: AppDatabase): ScheduleDao {
+        return appDatabase.scheduleDao()
     }
 
     @Provides
     @Singleton
-    fun provideUploadAudioUseCase(networkRepository: NetworkRepository): UploadAudioUseCase {
-        return UploadAudioUseCase(networkRepository = networkRepository)
+    fun provideUploadAudioUseCase(repository: AudioRepository): UploadAudioUseCase {
+        return UploadAudioUseCase(repository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSaveRecordingUseCase(repository: AudioRepository): SaveRecordingUseCase {
+        return SaveRecordingUseCase(repository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetRecordingsForDayUseCase(repository: AudioRepository): GetRecordingsForDayUseCase {
+        return GetRecordingsForDayUseCase(repository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDeleteRecordingUseCase(repository: AudioRepository): DeleteRecordingUseCase {
+        return DeleteRecordingUseCase(repository)
     }
 
     @Provides

@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import com.kiper.app.R
 import com.kiper.app.service.MyAccessibilityService
 import com.kiper.app.service.SyncService
+import dagger.hilt.android.AndroidEntryPoint
 
 class MainActivity : AppCompatActivity() {
 
