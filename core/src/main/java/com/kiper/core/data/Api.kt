@@ -12,7 +12,7 @@ import retrofit2.http.Part
 import retrofit2.http.Query
 
 interface ApiService {
-    @GET("https://faf2e4aa-c2db-480b-8177-b8c32d9cf3d5.mock.pstmn.io/command/getSchedule")
+    @GET("getSchedule")
     suspend fun getSchedule(@Query("deviceId") deviceId: String): Response<BaseResponse<SchedulesResponseDto>>
 
     @Multipart

@@ -61,6 +61,7 @@ class SyncViewModel @Inject constructor(
         fileNames: List<String>? = emptyList(),
     ) = launch {
         execute {
+            Log.d("SyncViewModel", "Uploading audio files: $filePaths")
             val response = uploadAudioUseCase.execute(filePaths, deviceId, eventType)
             response.forEachIndexed { index, b ->
                 if (b) {

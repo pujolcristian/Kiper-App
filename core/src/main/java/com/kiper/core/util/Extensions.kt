@@ -27,16 +27,15 @@ val Calendar.timeString: String
 
 fun String.getScheduledFromNameFile(): ScheduleResponse {
     val divFileName = split("_")
-    val starTime = divFileName.getOrNull(1) + ":" + divFileName.getOrNull(2)
+    val starTime = divFileName.getOrNull(1) .orEmpty()
     val endTime =
-        divFileName.getOrNull(3) + ":" + divFileName.getOrNull(4)?.split(".")?.getOrNull(0)
+        divFileName.getOrNull(2)?.split(".")?.getOrNull(0).orEmpty()
     Log.i("getScheduledFromNameFile", "starTime: $starTime, endTime: $endTime")
     return ScheduleResponse(starTime, endTime)
 }
 
 fun String.generateFileName(): String {
-    val sanitizedBaseName = this.replace(":", "_")
     val index = System.currentTimeMillis()
-    val name =  "$sanitizedBaseName.$index.3gp"
+    val name =  "$this.$index.3gp"
     return name
 }

@@ -3,8 +3,6 @@ package com.kiper.core.data.repository
 import com.kiper.core.data.mappers.toAudioRecording
 import com.kiper.core.data.mappers.toAudioRecordingEntity
 import com.kiper.core.data.mappers.toScheduleResponse
-import com.kiper.core.data.source.local.dao.AudioRecordingDao
-import com.kiper.core.data.source.local.entity.AudioRecordingEntity
 import com.kiper.core.data.source.remote.AudioLocalDataSource
 import com.kiper.core.data.source.remote.AudioRemoteDataSource
 import com.kiper.core.domain.model.AudioRecording

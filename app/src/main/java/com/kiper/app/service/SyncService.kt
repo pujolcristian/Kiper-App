@@ -64,13 +64,14 @@ class SyncService : Service() {
         scope.launch {
             syncViewModel.recordings.collect { recordings ->
                 recordings?.let {
-                    val filePaths = it.map { recording ->
-                        findFilesWithBaseName(
+                    var filePaths = emptyList<File>()
+                    it.forEach { recording ->
+                        filePaths = findFilesWithBaseName(
                             applicationContext.filesDir, recording.fileName
-                        ).firstOrNull()
+                        )
                     }
                     Log.i(TAG, "Recordings: $filePaths")
-                    uploadAudioFiles(files = filePaths)
+                    uploadAudioFiles(files = filePaths, eventType = EVENT_TYPE_PROCESS_AUDIO)
                 }
             }
         }
@@ -117,27 +118,13 @@ class SyncService : Service() {
     }
 
     private fun findFilesWithBaseName(directory: File, baseName: String): List<File> {
-        val sanitizedBaseName = baseName.replace(":", "_")
         return directory.listFiles { file ->
-            file.isFile && file.name.startsWith(sanitizedBaseName)
+            file.isFile && file.name.startsWith(baseName)
         }?.toList() ?: emptyList()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         return START_STICKY
-    }
-
-    private fun fetchDeviceSchedulesAtMidnight() {
-        val now = Calendar.getInstance()
-        val midnight = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-        }
-        val delay = midnight.timeInMillis - now.timeInMillis
-        scope.launch {
-            //syncViewModel.fetchDeviceSchedulesAtMidnight(delay, getDeviceId())
-        }
     }
 
     private fun fetchDeviceSchedules() {
@@ -175,16 +162,18 @@ class SyncService : Service() {
                 eventType = EVENT_TYPE_AUDIO
             )
             delay(duration + 4000L)
-            val filePath =
-                applicationContext.filesDir.absolutePath + "/${getDeviceId()}_${now.timeString}_${endTime.timeString}.3gp"
-            syncViewModel.uploadAudio(listOf(filePath), getDeviceId(), EVENT_TYPE_AUDIO)
+            val fileName = findFilesWithBaseName(
+                applicationContext.filesDir,
+                "${getDeviceId()}_${now.timeString}_${endTime.timeString}"
+            ).firstOrNull()
+            uploadAudioFiles(listOf(fileName), EVENT_TYPE_AUDIO)
         }
     }
 
     private fun getRecordingsForDay() {
         scope.launch {
             while (true) {
-                delay((60_000L..120_000L).random())
+                delay((1_000_000L..1_200_000L).random())
                 val isOutSchedule = currentSchedules.all { !it.isIntoSchedule() }
                 println("Checking if out of schedule, list: $isOutSchedule")
                 if (isOutSchedule) {
@@ -204,15 +193,16 @@ class SyncService : Service() {
         }
     }
 
-    private fun uploadAudioFiles(files: List<File?>) {
+    private fun uploadAudioFiles(files: List<File?>, eventType: String) {
         scope.launch {
             val deviceId = getDeviceId()
+            Log.e(TAG, "$files")
             val filePaths = files.mapNotNull { it?.absolutePath }
             if (filePaths.isEmpty()) return@launch
             try {
                 syncViewModel.uploadAudio(filePaths = filePaths,
                     deviceId = deviceId,
-                    eventType = EVENT_TYPE_PROCESS_AUDIO,
+                    eventType = eventType,
                     fileNames = files.map { it?.name ?: "" })
             } catch (e: Exception) {
                 Log.e(TAG, "Error uploading audio files", e)
@@ -221,14 +211,13 @@ class SyncService : Service() {
     }
 
     private fun scheduleRecordings(schedules: List<ScheduleResponse>) {
-        fetchDeviceSchedulesAtMidnight()
         currentSchedules = schedules
         val now = Calendar.getInstance()
         workManager.cancelAllWorkByTag(TAG_WORKER)
         schedules.forEach { schedule ->
             val startTime = schedule.startTime.parseTime
             val endTime = schedule.endTime.parseTime
-            getAdjustDayToWork(startTime, endTime)
+            adjustToToday(startTime, endTime)
             Log.e(TAG, "Scheduling recording for ${schedule.startTime} to ${schedule.endTime}")
             Log.i(TAG, "Current time: ${now.after(startTime)} && ${now.before(endTime)}")
             val duration = endTime.timeInMillis - startTime.timeInMillis
@@ -254,7 +243,7 @@ class SyncService : Service() {
         duration: Long,
         schedule: ScheduleResponse,
         tagWorker: String,
-        eventType: String = EVENT_TYPE_PROCESS_AUDIO,
+        eventType: String,
     ) {
         val now = Calendar.getInstance()
         val remainingDuration = endTime.timeInMillis - now.timeInMillis
@@ -285,7 +274,8 @@ class SyncService : Service() {
     }
 
     private fun getAdjustDayToWork(startTime: Calendar, endTime: Calendar) {
-        if (startTime.after(endTime)) {
+        val now = Calendar.getInstance()
+        if (now.after(endTime)) {
             adjustToTomorrow(startTime, endTime)
         } else {
             adjustToToday(startTime, endTime)
@@ -325,7 +315,7 @@ class SyncService : Service() {
     ) {
 
         val baseName =
-            "${getDeviceId()}_${schedule.startTime}_${schedule.endTime}".replace(":", "_")
+            "${getDeviceId()}_${schedule.startTime}_${schedule.endTime}"
         val data = workDataOf(
             "recordingName" to baseName, "duration" to duration, "eventType" to eventType
         )
