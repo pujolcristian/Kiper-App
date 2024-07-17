@@ -5,7 +5,6 @@ import androidx.room.Room
 import androidx.work.WorkManager
 import com.kiper.core.data.ApiService
 import com.kiper.core.data.repository.AudioRepositoryImpl
-import com.kiper.core.data.repository.NetworkRepositoryImpl
 import com.kiper.core.data.source.local.dao.AudioRecordingDao
 import com.kiper.core.data.source.local.dao.ScheduleDao
 import com.kiper.core.data.source.local.db.AppDatabase
@@ -18,8 +17,9 @@ import com.kiper.core.domain.usecase.GetDeviceSchedulesUseCase
 import com.kiper.core.domain.usecase.GetRecordingsForDayUseCase
 import com.kiper.core.domain.usecase.SaveRecordingUseCase
 import com.kiper.core.domain.usecase.UploadAudioUseCase
-import com.kiper.core.framework.worker.audioRecorder.AndroidAudioRecorder
-import com.kiper.core.framework.worker.audioRecorder.AudioRecorder
+import com.kiper.core.framework.audioRecorder.AndroidAudioRecorder
+import com.kiper.core.framework.audioRecorder.AudioRecorder
+import com.kiper.core.util.FileUtil
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -106,13 +106,6 @@ object CoreModule {
 
     @Provides
     @Singleton
-    fun provideNetworkRepository(@ApplicationContext context: Context): NetworkRepository {
-        return NetworkRepositoryImpl(context)
-    }
-
-
-    @Provides
-    @Singleton
     fun provideGetDeviceSchedulesUseCase(audioRepository: AudioRepository): GetDeviceSchedulesUseCase {
         return GetDeviceSchedulesUseCase(audioRepository = audioRepository)
     }
@@ -170,6 +163,12 @@ object CoreModule {
     @Singleton
     fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
         return WorkManager.getInstance(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFileUtil(): FileUtil {
+        return FileUtil()
     }
 
 }

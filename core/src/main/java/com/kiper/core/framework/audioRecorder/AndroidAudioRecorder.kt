@@ -1,4 +1,4 @@
-package com.kiper.core.framework.worker.audioRecorder
+package com.kiper.core.framework.audioRecorder
 
 import android.content.Context
 import android.media.MediaRecorder

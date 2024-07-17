@@ -1,5 +1,6 @@
 package com.kiper.core.data.dto
 
+import android.util.Log
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 import okio.BufferedSink
@@ -8,7 +9,6 @@ import java.io.File
 class ProgressRequestBody(
     private val file: File,
     private val contentType: String,
-    private val listener: (progress: Int) -> Unit
 ) : RequestBody() {
 
     override fun contentType() = contentType.toMediaTypeOrNull()
@@ -25,7 +25,7 @@ class ProgressRequestBody(
             while (inputStream.read(buffer).also { read = it } != -1) {
                 uploaded += read
                 sink.write(buffer, 0, read)
-                listener((100 * uploaded / contentLength()).toInt())
+                Log.d("Progress", "${(100 * uploaded / contentLength()).toInt()}%")
             }
         }
     }

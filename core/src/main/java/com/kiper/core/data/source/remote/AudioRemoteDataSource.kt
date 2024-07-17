@@ -1,6 +1,5 @@
 package com.kiper.core.data.source.remote
 
-import android.util.Log
 import com.kiper.core.data.ApiService
 import com.kiper.core.data.dto.ProgressRequestBody
 import com.kiper.core.data.dto.ScheduleResponseDto
@@ -40,17 +39,17 @@ class AudioRemoteDataSource @Inject constructor(
 
     suspend fun uploadAudio(filePath: String, deviceId: String, eventType: String): Boolean {
         val file = File(filePath)
-        val requestFile = ProgressRequestBody(file, "audio/3gp") { progress ->
-            Log.d("UploadProgress", "Progress: $progress%")
-        }
+        println("Uploading audio: $filePath")
+        val requestFile = ProgressRequestBody(file, "audio/3gp")
         val body = MultipartBody.Part.createFormData("data", file.name, requestFile)
         val event = eventType.toRequestBody("text/plain".toMediaTypeOrNull())
         val deviceIdBody = deviceId.toRequestBody("text/plain".toMediaTypeOrNull())
 
         val response = apiService.uploadAudio(data = body, event = event, deviceId = deviceIdBody)
-        if (response.isSuccessful) {
+        val result = response.isSuccessful && response.body()?.isError() == false
+        if (result) {
             localDataSource.deleteRecordingUploaded(file.name)
         }
-        return response.isSuccessful
+        return result
     }
 }

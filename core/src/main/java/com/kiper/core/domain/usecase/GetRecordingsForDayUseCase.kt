@@ -1,6 +1,5 @@
 package com.kiper.core.domain.usecase
 
-import com.kiper.core.data.source.local.entity.AudioRecordingEntity
 import com.kiper.core.domain.model.AudioRecording
 import com.kiper.core.domain.repository.AudioRepository
 

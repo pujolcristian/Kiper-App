@@ -106,19 +106,5 @@
             </intent-filter>
         </receiver>
 
-        <receiver android:name=".receiver.ConnectivityReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.net.conn.CONNECTIVITY_CHANGE"
-                    tools:ignore="BatteryLife" />
-            </intent-filter>
-        </receiver>
-
-        <service
-            android:name="com.evernote.android.job.gcm.PlatformGcmService"
-            android:enabled="true"
-            tools:replace="android:enabled"/>
-
-
     </application>
 </manifest>
