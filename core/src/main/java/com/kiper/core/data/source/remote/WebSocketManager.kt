@@ -74,6 +74,7 @@ class WebSocketManager @Inject constructor() {
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             super.onClosed(webSocket, code, reason)
+            reconnect()
             println("WebSocket Closed: $code / $reason")
         }
 
@@ -94,11 +95,11 @@ class WebSocketManager @Inject constructor() {
 
     private fun reconnect() {
         Thread.sleep(5000)
+        stop()
         start(deviceId = deviceId)
     }
 
     companion object {
-        const val TAG = "WebSocketManager"
         private const val TYPE_SEND_REGISTER = "register"
     }
 }

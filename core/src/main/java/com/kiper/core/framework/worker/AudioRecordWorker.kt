@@ -8,6 +8,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.kiper.core.domain.model.isIntoSchedule
 import com.kiper.core.framework.audioRecorder.AndroidAudioRecorder
+import com.kiper.core.util.Constants.EVENT_TYPE_AUDIO
 import com.kiper.core.util.generateFileName
 import com.kiper.core.util.getRemainingDurationFromNameFile
 import com.kiper.core.util.getScheduledFromNameFile
@@ -33,9 +34,13 @@ class AudioRecordWorker(
         val recordingName = inputData.getString("recordingName")
         val eventType = inputData.getString("eventType")
 
-        val remainingDuration = recordingName?.getRemainingDurationFromNameFile()
+        val remainingDuration = recordingName?.getRemainingDurationFromNameFile() ?: 0L
 
         if (duration <= 0L) {
+            return@withContext Result.failure()
+        }
+
+        if (remainingDuration <= 0L) {
             return@withContext Result.failure()
         }
 
@@ -55,7 +60,7 @@ class AudioRecordWorker(
 
             startRecording(file.absolutePath)
             isRecording = true
-            delay(remainingDuration ?: duration)
+            delay(if (eventType != EVENT_TYPE_AUDIO) remainingDuration else duration)
             stopRecording()
             isRecording = false
             Result.success()
@@ -89,8 +94,4 @@ class AudioRecordWorker(
         Log.i("AudioRecordWorker", "Stopped recording")
     }
 
-
-    companion object {
-        private const val EVENT_TYPE_AUDIO = "audio"
-    }
 }
