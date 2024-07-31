@@ -9,5 +9,5 @@ interface AudioRepository {
     suspend fun uploadAudio(filePath: String, deviceId: String, eventType: String): Boolean
     suspend fun saveRecording(recording: AudioRecording)
     suspend fun getRecordingsForDay(startOfDay: Long, endOfDay: Long): List<AudioRecording>
-    suspend fun deleteRecordingUploaded(fileName: String)
+    suspend fun deleteAllRecordings()
 }

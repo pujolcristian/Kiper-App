@@ -3,7 +3,7 @@ package com.kiper.core.data.repository
 import com.kiper.core.data.mappers.toAudioRecording
 import com.kiper.core.data.mappers.toAudioRecordingEntity
 import com.kiper.core.data.mappers.toScheduleResponse
-import com.kiper.core.data.source.remote.AudioLocalDataSource
+import com.kiper.core.data.source.local.AudioLocalDataSource
 import com.kiper.core.data.source.remote.AudioRemoteDataSource
 import com.kiper.core.domain.model.AudioRecording
 import com.kiper.core.domain.model.ScheduleResponse
@@ -39,14 +39,11 @@ class AudioRepositoryImpl @Inject constructor(
         startOfDay: Long,
         endOfDay: Long,
     ): List<AudioRecording> {
-        println("Getting recordings for day: $startOfDay - $endOfDay")
         val response = audioLocalDataSource.getRecordingsForDay(startOfDay, endOfDay)
-        println("Response: $response")
         return response.map { it.toAudioRecording() }
     }
 
-    override suspend fun deleteRecordingUploaded(fileName: String) {
-        println("Deleting recording with id: $fileName")
-        audioLocalDataSource.deleteRecordingUploaded(fileName = fileName)
+    override suspend fun deleteAllRecordings() {
+        audioLocalDataSource.deleteAllRecordings()
     }
 }

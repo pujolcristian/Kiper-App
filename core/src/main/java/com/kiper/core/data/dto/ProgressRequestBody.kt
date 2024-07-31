@@ -25,7 +25,10 @@ class ProgressRequestBody(
             while (inputStream.read(buffer).also { read = it } != -1) {
                 uploaded += read
                 sink.write(buffer, 0, read)
-                Log.d("Progress", "${(100 * uploaded / contentLength()).toInt()}%")
+                // Ensure we do not divide by zero
+                if (contentLength() > 0) {
+                    Log.d("Progress", "${(100 * uploaded / contentLength()).toInt()}%")
+                }
             }
         }
     }

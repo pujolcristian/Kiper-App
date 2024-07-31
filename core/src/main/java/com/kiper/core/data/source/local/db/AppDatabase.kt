@@ -9,7 +9,7 @@ import com.kiper.core.data.source.local.entity.AudioRecordingEntity
 import com.kiper.core.data.source.local.entity.ScheduleEntity
 import com.kiper.core.util.Converters
 
-@Database(entities = [AudioRecordingEntity::class, ScheduleEntity::class], version = 3, exportSchema = false)
+@Database(entities = [AudioRecordingEntity::class, ScheduleEntity::class], version = 4, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun audioRecordingDao(): AudioRecordingDao

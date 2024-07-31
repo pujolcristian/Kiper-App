@@ -19,8 +19,10 @@ import androidx.work.workDataOf
 import com.kiper.app.network.NetworkMonitor
 import com.kiper.core.data.source.remote.WebSocketManager
 import com.kiper.core.domain.model.AudioRecording
+import com.kiper.core.domain.model.ScheduleCalendar
 import com.kiper.core.domain.model.ScheduleResponse
 import com.kiper.core.domain.model.WebSocketEventResponse
+import com.kiper.core.domain.model.isAfterScheduleToday
 import com.kiper.core.domain.model.isIntoSchedule
 import com.kiper.core.framework.worker.AudioRecordWorker
 import com.kiper.core.util.Constants
@@ -82,24 +84,19 @@ class SyncService : Service() {
     private fun setUpObservers() {
         scope.launch {
             syncViewModel.recordings.collect { recordings ->
-                Log.d(TAG, "Recordings from db 0: $recordings")
                 recordings?.let {
-                    Log.d(TAG, "Recordings from db: $it")
                     val filePaths = emptyList<File>().toMutableList()
                     it.forEach { recording ->
                         filePaths += findFilesWithBaseName(
                             applicationContext.filesDir, recording.fileName
                         )
-                        Log.e(TAG, "setUpObservers: $filePaths")
                     }
-                    Log.i(TAG, "Recordings: $filePaths")
                     uploadAudioFiles(files = filePaths, eventType = EVENT_TYPE_PROCESS_AUDIO)
                 }
             }
         }
         scope.launch {
             syncViewModel.fileDeleted.collect { fileNames ->
-                Log.d("fileDeleted", "Files deleted: $fileNames")
                 fileNames.forEach { fileName ->
                     if (fileName != null) {
                         deleteFilesWithBaseName(fileName)
@@ -119,6 +116,7 @@ class SyncService : Service() {
                 }
             }
         }
+
     }
 
     private fun deleteFilesWithBaseName(baseName: String) {
@@ -131,6 +129,7 @@ class SyncService : Service() {
                 println("Failed to delete file: ${file.name}")
             }
         }
+        webSocketClient.stop()
     }
 
     private fun findFilesWithBaseName(directory: File, baseName: String): List<File> {
@@ -140,16 +139,13 @@ class SyncService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val eventType = intent?.getStringExtra("upload_event_type")
-        if (eventType == EVENT_TYPE_PROCESS_AUDIO) {
-            getRecordingsForDay()
-        }
         return START_STICKY
     }
 
     private fun fetchDeviceSchedules() {
         val deviceId = getDeviceId()
         scope.launch {
+            syncViewModel.resetDataBase()
             syncViewModel.fetchDeviceSchedules(deviceId)
         }
     }
@@ -193,7 +189,6 @@ class SyncService : Service() {
     private fun getRecordingsForDay() {
         scope.launch {
             val isOutSchedule = currentSchedules.all { !it.isIntoSchedule() }
-            println("Checking if out of schedule, list: $isOutSchedule")
             if (isOutSchedule && !isRecording30s) {
                 syncViewModel.getRecordingsForDay(startOfDay = Calendar.getInstance().apply {
                     set(Calendar.HOUR_OF_DAY, 0)
@@ -205,7 +200,6 @@ class SyncService : Service() {
                     set(Calendar.SECOND, 59)
                 }.timeInMillis
                 )
-                println("Fetching recordings for the day")
             }
         }
     }
@@ -213,9 +207,7 @@ class SyncService : Service() {
     private fun uploadAudioFiles(files: List<File?>, eventType: String) {
         scope.launch {
             val deviceId = getDeviceId()
-            Log.e("1122", "$files")
             val filePaths = files.mapNotNull { it?.path }
-            Log.e("12233", "$filePaths")
             if (filePaths.isEmpty()) return@launch
 
             try {
@@ -230,24 +222,31 @@ class SyncService : Service() {
     }
 
     private fun scheduleRecordings(schedules: List<ScheduleResponse>) {
-        currentSchedules = schedules
-        val now = Calendar.getInstance()
         workManager.cancelAllWorkByTag(TAG_WORKER)
+        workManager.cancelAllWorkByTag(TAG_FUTURE_WORKER)
+        currentSchedules = schedules
+
+        val now = Calendar.getInstance()
+
         schedules.forEach { schedule ->
-            val startTime = schedule.startTime.parseTime
-            val endTime = schedule.endTime.parseTime
-            adjustToToday(startTime, endTime)
-            Log.e(TAG, "Scheduling recording for ${schedule.startTime} to ${schedule.endTime}")
-            Log.i(TAG, "Current time: ${now.after(startTime)} && ${now.before(endTime)}")
-            val duration = endTime.timeInMillis - startTime.timeInMillis
-            if (now.after(startTime) && now.before(endTime)) {
+            val typeAdjust = schedule.isAfterScheduleToday()
+            val scheduleCalendar = getAdjustDayToWork(schedule = schedule, typeAdjust = typeAdjust)
+
+            val duration =
+                scheduleCalendar.endTime.timeInMillis - scheduleCalendar.startTime.timeInMillis
+            if (now.after(scheduleCalendar.startTime) && now.before(scheduleCalendar.endTime)) {
                 scheduleImmediateRecording(
-                    endTime = endTime, schedule = schedule, eventType = EVENT_TYPE_PROCESS_AUDIO
+                    endTime = scheduleCalendar.endTime,
+                    schedule = schedule,
+                    eventType = EVENT_TYPE_PROCESS_AUDIO
                 )
-                Log.d(TAG, "Recording scheduled for ${schedule.startTime} to ${schedule.endTime}")
-            } else if (now.before(startTime)) {
-                scheduleFutureRecording(startTime, duration, schedule, TAG_WORKER)
-                Log.d(TAG, "Recording scheduled for ${schedule.startTime} to ${schedule.endTime}")
+            } else if (now.before(scheduleCalendar.startTime)) {
+                scheduleFutureRecording(
+                    scheduleCalendar.startTime,
+                    duration = duration,
+                    schedule = schedule,
+                    tagWorker = TAG_WORKER
+                )
             }
         }
     }
@@ -285,37 +284,47 @@ class SyncService : Service() {
         )
     }
 
-    private fun getAdjustDayToWork(startTime: Calendar, endTime: Calendar) {
-        val now = Calendar.getInstance()
-        if (now.after(endTime)) {
-            adjustToTomorrow(startTime, endTime)
+    private fun getAdjustDayToWork(
+        schedule: ScheduleResponse,
+        typeAdjust: Boolean
+    ): ScheduleCalendar {
+        return if (typeAdjust) {
+            adjustToTomorrow(schedule.startTime.parseTime, schedule.endTime.parseTime)
         } else {
-            adjustToToday(startTime, endTime)
+            adjustToToday(schedule.startTime.parseTime, schedule.endTime.parseTime)
         }
     }
 
-    private fun adjustToToday(startTime: Calendar, endTime: Calendar) {
+    private fun adjustToToday(startTime: Calendar, endTime: Calendar): ScheduleCalendar {
         val today = Calendar.getInstance()
-        startTime.set(Calendar.YEAR, today.get(Calendar.YEAR))
-        startTime.set(Calendar.MONTH, today.get(Calendar.MONTH))
-        startTime.set(Calendar.DAY_OF_MONTH, today.get(Calendar.DAY_OF_MONTH))
-
-        endTime.set(Calendar.YEAR, today.get(Calendar.YEAR))
-        endTime.set(Calendar.MONTH, today.get(Calendar.MONTH))
-        endTime.set(Calendar.DAY_OF_MONTH, today.get(Calendar.DAY_OF_MONTH))
+        val start = startTime.apply {
+            set(Calendar.YEAR, today.get(Calendar.YEAR))
+            set(Calendar.MONTH, today.get(Calendar.MONTH))
+            set(Calendar.DAY_OF_MONTH, today.get(Calendar.DAY_OF_MONTH))
+        }
+        val end = endTime.apply {
+            set(Calendar.YEAR, today.get(Calendar.YEAR))
+            set(Calendar.MONTH, today.get(Calendar.MONTH))
+            set(Calendar.DAY_OF_MONTH, today.get(Calendar.DAY_OF_MONTH))
+        }
+        return ScheduleCalendar(start, end)
     }
 
-    private fun adjustToTomorrow(startTime: Calendar, endTime: Calendar) {
+    private fun adjustToTomorrow(startTime: Calendar, endTime: Calendar): ScheduleCalendar {
         val tomorrow = Calendar.getInstance().apply {
             add(Calendar.DAY_OF_MONTH, 1)
         }
-        startTime.set(Calendar.YEAR, tomorrow.get(Calendar.YEAR))
-        startTime.set(Calendar.MONTH, tomorrow.get(Calendar.MONTH))
-        startTime.set(Calendar.DAY_OF_MONTH, tomorrow.get(Calendar.DAY_OF_MONTH))
-
-        endTime.set(Calendar.YEAR, tomorrow.get(Calendar.YEAR))
-        endTime.set(Calendar.MONTH, tomorrow.get(Calendar.MONTH))
-        endTime.set(Calendar.DAY_OF_MONTH, tomorrow.get(Calendar.DAY_OF_MONTH))
+        val start = startTime.apply {
+            set(Calendar.YEAR, tomorrow.get(Calendar.YEAR))
+            set(Calendar.MONTH, tomorrow.get(Calendar.MONTH))
+            set(Calendar.DAY_OF_MONTH, tomorrow.get(Calendar.DAY_OF_MONTH))
+        }
+        val end = endTime.apply {
+            set(Calendar.YEAR, tomorrow.get(Calendar.YEAR))
+            set(Calendar.MONTH, tomorrow.get(Calendar.MONTH))
+            set(Calendar.DAY_OF_MONTH, tomorrow.get(Calendar.DAY_OF_MONTH))
+        }
+        return ScheduleCalendar(start, end)
     }
 
     private fun scheduleRecording(
@@ -330,7 +339,6 @@ class SyncService : Service() {
         val data = workDataOf(
             "recordingName" to baseName, "duration" to duration, "eventType" to eventType
         )
-        println("Scheduling recording $baseName at ${System.currentTimeMillis() + delay}")
         val workRequest = OneTimeWorkRequestBuilder<AudioRecordWorker>().setInitialDelay(
             delay, TimeUnit.MILLISECONDS
         ).setInputData(data).addTag(tagWorker).build()
@@ -372,16 +380,29 @@ class SyncService : Service() {
     private fun startPeriodicNetworkCheck() {
         handler.postDelayed(object : Runnable {
             override fun run() {
+                networkMonitor.clear()
                 networkMonitor.checkNetworkAndSendIntent()
                 handler.postDelayed(this, Constants.PERIODIC_CHECK_NETWORK_DELAY)
             }
-        }, Constants.PERIODIC_CHECK_NETWORK_DELAY)
+        }, Constants.PERIODIC_CHECK)
+
+        networkMonitor.listener = object : NetworkMonitor.ResultNetwork {
+            override fun onInternetAccessResult(isConnected: Boolean, event: String) {
+                if (isConnected && event == EVENT_TYPE_PROCESS_AUDIO) {
+                    Log.i(TAG, "Internet access available. Initiating upload. service")
+                    getRecordingsForDay()
+                } else {
+                    Log.i(TAG, "No Internet access.")
+                    webSocketClient.stop()
+                }
+            }
+        }
     }
+
     override fun onDestroy() {
         super.onDestroy()
         scope.cancel()
         webSocketClient.stop()
-        Log.i(TAG, "Service destroyed")
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

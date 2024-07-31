@@ -8,11 +8,10 @@ import com.kiper.core.data.repository.AudioRepositoryImpl
 import com.kiper.core.data.source.local.dao.AudioRecordingDao
 import com.kiper.core.data.source.local.dao.ScheduleDao
 import com.kiper.core.data.source.local.db.AppDatabase
-import com.kiper.core.data.source.remote.AudioLocalDataSource
+import com.kiper.core.data.source.local.AudioLocalDataSource
 import com.kiper.core.data.source.remote.AudioRemoteDataSource
 import com.kiper.core.domain.repository.AudioRepository
-import com.kiper.core.domain.repository.NetworkRepository
-import com.kiper.core.domain.usecase.DeleteRecordingUseCase
+import com.kiper.core.domain.usecase.DeleteAllRecordingsUseCase
 import com.kiper.core.domain.usecase.GetDeviceSchedulesUseCase
 import com.kiper.core.domain.usecase.GetRecordingsForDayUseCase
 import com.kiper.core.domain.usecase.SaveRecordingUseCase
@@ -44,9 +43,9 @@ object CoreModule {
 
         return OkHttpClient.Builder()
             .addInterceptor(logging)
-            .connectTimeout(5, TimeUnit.MINUTES)
-            .readTimeout(5, TimeUnit.MINUTES)
-            .writeTimeout(5, TimeUnit.MINUTES)
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .writeTimeout(20, TimeUnit.SECONDS)
             .build()
     }
 
@@ -155,8 +154,8 @@ object CoreModule {
 
     @Provides
     @Singleton
-    fun provideDeleteRecordingUseCase(repository: AudioRepository): DeleteRecordingUseCase {
-        return DeleteRecordingUseCase(repository)
+    fun provideDeleteRecordingUseCase(repository: AudioRepository): DeleteAllRecordingsUseCase {
+        return DeleteAllRecordingsUseCase(repository)
     }
 
     @Provides

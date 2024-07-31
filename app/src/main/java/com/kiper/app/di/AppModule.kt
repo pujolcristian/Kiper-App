@@ -1,9 +1,11 @@
 package com.kiper.app.di
 
 import android.content.Context
+import com.kiper.app.network.ConnectivityChecker
+import com.kiper.app.network.DefaultConnectivityChecker
 import com.kiper.app.network.NetworkMonitor
 import com.kiper.app.service.SyncViewModel
-import com.kiper.core.domain.usecase.DeleteRecordingUseCase
+import com.kiper.core.domain.usecase.DeleteAllRecordingsUseCase
 import com.kiper.core.domain.usecase.GetDeviceSchedulesUseCase
 import com.kiper.core.domain.usecase.GetRecordingsForDayUseCase
 import com.kiper.core.domain.usecase.SaveRecordingUseCase
@@ -19,6 +21,8 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
+
+
     @Provides
     @Singleton
     fun provideSyncViewModel(
@@ -26,18 +30,30 @@ object AppModule {
         getRecordingsForDayUseCase: GetRecordingsForDayUseCase,
         saveRecordingUseCase: SaveRecordingUseCase,
         uploadAudioUseCase: UploadAudioUseCase,
+        deleteAllRecordingsUseCase: DeleteAllRecordingsUseCase,
     ): SyncViewModel {
         return SyncViewModel(
             getDeviceSchedulesUseCase = getDeviceSchedulesUseCase,
             getRecordingsForDayUseCase = getRecordingsForDayUseCase,
             saveRecordingUseCase = saveRecordingUseCase,
-            uploadAudioUseCase = uploadAudioUseCase
+            uploadAudioUseCase = uploadAudioUseCase,
+            deleteAllRecordingsUseCase = deleteAllRecordingsUseCase,
         )
     }
 
     @Provides
     @Singleton
-    fun provideNetworkMonitor(@ApplicationContext context: Context): NetworkMonitor {
-        return NetworkMonitor(context)
+    fun provideConnectivityChecker(
+        @ApplicationContext context: Context
+    ): ConnectivityChecker {
+        return DefaultConnectivityChecker(context = context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNetworkMonitor(
+        @ApplicationContext context: Context
+    ): NetworkMonitor {
+        return NetworkMonitor(context = context)
     }
 }

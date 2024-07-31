@@ -3,7 +3,9 @@ package com.kiper.core.data.source.remote
 import com.google.gson.Gson
 import com.kiper.core.BuildConfig
 import com.kiper.core.domain.model.WebSocketEventResponse
+import com.kiper.core.domain.model.WebSocketMessageRequest
 import com.kiper.core.domain.model.WebSocketSendRequest
+import com.kiper.core.util.Constants.TYPE_SEND_REGISTER
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.WebSocket
@@ -31,13 +33,14 @@ class WebSocketManager @Inject constructor() {
         client = OkHttpClient()
         request = Request.Builder().url(BuildConfig.WEB_SOCKET).build()
         webSocket = client.newWebSocket(request, WebSocketEventListener())
+        client.dispatcher.executorService.shutdown()
     }
 
     fun stop() {
-        webSocket?.close(1000, "Client closed connection")
+        webSocket?.cancel()
     }
 
-    fun send(message: String) {
+    private fun send(message: String) {
         webSocket?.send(message)
     }
 
@@ -48,8 +51,7 @@ class WebSocketManager @Inject constructor() {
             send(
                 Gson().toJson(
                     WebSocketSendRequest(
-                        clientId = deviceId,
-                        type = TYPE_SEND_REGISTER
+                        clientId = deviceId, type = TYPE_SEND_REGISTER
                     )
                 )
             )
@@ -59,7 +61,15 @@ class WebSocketManager @Inject constructor() {
             super.onMessage(webSocket, text)
             println("WebSocket Received Message: $text")
             callback?.onMessage(getWebSocketEventFromString(text))
-            // Aquí puedes manejar el mensaje recibido, como actualizar la base de datos o enviar una notificación
+
+            send(
+                Gson().toJson(
+                    WebSocketMessageRequest(
+                        clientId = deviceId
+                    )
+                )
+            )
+
         }
 
         override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
@@ -69,6 +79,7 @@ class WebSocketManager @Inject constructor() {
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
             super.onClosing(webSocket, code, reason)
+            webSocket.close(1000, null)
             println("WebSocket Closing: $code / $reason")
         }
 
@@ -99,7 +110,4 @@ class WebSocketManager @Inject constructor() {
         start(deviceId = deviceId)
     }
 
-    companion object {
-        private const val TYPE_SEND_REGISTER = "register"
-    }
 }

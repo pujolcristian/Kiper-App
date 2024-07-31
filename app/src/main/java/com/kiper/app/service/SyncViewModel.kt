@@ -1,9 +1,9 @@
 package com.kiper.app.service
 
-import android.util.Log
 import com.kiper.app.presentation.BaseViewModel
 import com.kiper.core.domain.model.AudioRecording
 import com.kiper.core.domain.model.ScheduleResponse
+import com.kiper.core.domain.usecase.DeleteAllRecordingsUseCase
 import com.kiper.core.domain.usecase.GetDeviceSchedulesUseCase
 import com.kiper.core.domain.usecase.GetRecordingsForDayUseCase
 import com.kiper.core.domain.usecase.SaveRecordingUseCase
@@ -22,6 +22,7 @@ class SyncViewModel @Inject constructor(
     private val getRecordingsForDayUseCase: GetRecordingsForDayUseCase,
     private val saveRecordingUseCase: SaveRecordingUseCase,
     private val uploadAudioUseCase: UploadAudioUseCase,
+    private val deleteAllRecordingsUseCase: DeleteAllRecordingsUseCase,
 ) : BaseViewModel() {
 
     private val _schedules = MutableSharedFlow<List<ScheduleResponse>?>()
@@ -30,17 +31,16 @@ class SyncViewModel @Inject constructor(
     private val _recordings = MutableSharedFlow<List<AudioRecording>?>()
     val recordings: SharedFlow<List<AudioRecording>?> get() = _recordings
 
-    private val _uploadResult = MutableStateFlow<Boolean?>(null)
-    val uploadResult: StateFlow<Boolean?> get() = _uploadResult
+    private val _uploadResult = MutableSharedFlow<Boolean?>()
+    val uploadResult: SharedFlow<Boolean?> get() = _uploadResult
 
     private val _fileDeleted = MutableStateFlow<List<String?>>(emptyList())
     val fileDeleted: StateFlow<List<String?>> get() = _fileDeleted
 
+
     fun fetchDeviceSchedules(deviceId: String) = launch {
         execute {
-            Log.d("SyncViewModel", "Fetching schedules for device: $deviceId")
             getDeviceSchedulesUseCase(deviceId).collectLatest {
-                Log.d("SyncViewModel", "Schedules fetched: $it")
                 _schedules.emit(it)
             }
         }
@@ -53,20 +53,16 @@ class SyncViewModel @Inject constructor(
         fileNames: List<String>? = emptyList(),
     ) = launch {
         execute {
-            Log.d("SyncViewModel", "Uploading audio files: $filePaths")
             val response = uploadAudioUseCase.execute(filePaths, deviceId, eventType)
             val list = response.mapIndexed() { index, b ->
                 if (b) {
-                    if (fileNames?.size == response.size) {
-                        _uploadResult.value = true
-                    }
                     fileNames?.get(index)
                 } else {
-                    Log.d("SyncViewModel", "Upload failed for file ${fileNames?.get(index)}")
                     null
                 }
             }
             deleteRecording(fileNames = list)
+            _uploadResult.emit(true)
         }
     }
 
@@ -79,16 +75,19 @@ class SyncViewModel @Inject constructor(
 
     fun saveRecording(recording: AudioRecording) = launch {
         execute {
-            println("Saving recording VM: $recording")
             saveRecordingUseCase(recording)
         }
     }
 
     private fun deleteRecording(fileNames: List<String?>) = launch {
         execute {
-            Log.d("Deleting", "Deleting file: $fileNames")
             _fileDeleted.value = fileNames
         }
     }
 
+    fun resetDataBase() = launch {
+        execute {
+            deleteAllRecordingsUseCase.invoke()
+        }
+    }
 }

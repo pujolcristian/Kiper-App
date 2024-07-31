@@ -40,7 +40,7 @@ class AudioRecordWorker(
             return@withContext Result.failure()
         }
 
-        if (remainingDuration <= 0L) {
+        if (remainingDuration <= 0L && eventType != EVENT_TYPE_AUDIO) {
             return@withContext Result.failure()
         }
 

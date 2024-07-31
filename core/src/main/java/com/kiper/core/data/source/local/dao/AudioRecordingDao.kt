@@ -18,5 +18,7 @@ interface AudioRecordingDao {
     @Query("DELETE FROM audio_recordings WHERE fileName = :fileName")
     suspend fun deleteRecordingUploaded(fileName: String)
 
+    @Query("DELETE FROM audio_recordings")
+    suspend fun deleteAll()
 
 }
