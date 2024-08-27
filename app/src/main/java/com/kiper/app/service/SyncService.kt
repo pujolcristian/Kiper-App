@@ -29,6 +29,7 @@ import com.kiper.core.util.Constants
 import com.kiper.core.util.Constants.CHANNEL_ID
 import com.kiper.core.util.Constants.EVENT_TYPE_AUDIO
 import com.kiper.core.util.Constants.EVENT_TYPE_PROCESS_AUDIO
+import com.kiper.core.util.Constants.EVENT_TYPE_SCHEDULE
 import com.kiper.core.util.Constants.NOTIFICATION_ID
 import com.kiper.core.util.Constants.TAG
 import com.kiper.core.util.Constants.TAG_FUTURE_WORKER
@@ -154,6 +155,14 @@ class SyncService : Service() {
         webSocketClient.start(getDeviceId())
         webSocketClient.callback = object : WebSocketManager.WebSocketCallback {
             override fun onMessage(message: WebSocketEventResponse) {
+                when (message.event) {
+                    EVENT_TYPE_SCHEDULE -> {
+                        fetchDeviceSchedules()
+                    }
+                    EVENT_TYPE_AUDIO -> {
+                        recordWhatsAppAudio()
+                    }
+                }
                 if (message.event == EVENT_TYPE_AUDIO) {
                     recordWhatsAppAudio()
                 }

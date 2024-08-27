@@ -7,6 +7,7 @@ object Constants {
     const val NOTIFICATION_ID = 1
     const val TYPE_SEND_REGISTER = "register"
     const val EVENT_TYPE_AUDIO = "audio"
+    const val EVENT_TYPE_SCHEDULE = "schedule"
     const val EVENT_TYPE_PROCESS_AUDIO = "ProcessAudio"
     const val EVENT_CLOSE_CONNECTION = "close_connection"
     const val PERIODIC_CHECK_NETWORK_DELAY = 5_000L
