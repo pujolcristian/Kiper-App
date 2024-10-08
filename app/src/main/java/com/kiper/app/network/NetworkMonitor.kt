@@ -66,7 +66,7 @@ class NetworkMonitor(
             val hasInternetAccess = try {
                 val url = URL("http://clients3.google.com/generate_204")
                 val urlConnection: HttpURLConnection = url.openConnection() as HttpURLConnection
-                urlConnection.connectTimeout = 3000
+                urlConnection.connectTimeout = 9000
                 urlConnection.connect()
                 val isConnected = urlConnection.responseCode == 204
                 urlConnection.disconnect()
