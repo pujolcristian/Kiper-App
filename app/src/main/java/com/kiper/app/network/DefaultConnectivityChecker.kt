@@ -47,7 +47,7 @@ class DefaultConnectivityChecker(
         } else {
             listener?.onInternetAccessResult(isConnected, event)
             sendSyncServiceIntent(Constants.EVENT_CLOSE_CONNECTION)
-            Log.i("NetworkMonitor", "No Internet access.")
+          //  Log.i("NetworkMonitor", "No Internet access.")
         }
     }
 

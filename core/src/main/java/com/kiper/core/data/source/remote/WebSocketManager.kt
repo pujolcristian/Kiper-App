@@ -44,6 +44,11 @@ class WebSocketManager @Inject constructor() {
         webSocket?.send(message)
     }
 
+
+    fun hasActiveConnection(): Boolean {
+        return webSocket != null && webSocket?.send("ping") == true
+    }
+
     private inner class WebSocketEventListener : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
             super.onOpen(webSocket, response)

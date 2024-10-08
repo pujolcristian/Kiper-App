@@ -401,8 +401,14 @@ class SyncService : Service() {
                     Log.i(TAG, "Internet access available. Initiating upload. service")
                     getRecordingsForDay()
                 } else {
-                    Log.i(TAG, "No Internet access.")
-                    webSocketClient.stop()
+                    if (isConnected && event == EVENT_TYPE_PROCESS_AUDIO) {
+                        Log.i(TAG, "No Internet access.")
+                    } else {
+                        Log.i(TAG, "Internet access.")
+                    }
+                    if (!webSocketClient.hasActiveConnection()) {
+                        webSocketClient.stop()
+                    }
                 }
             }
         }
