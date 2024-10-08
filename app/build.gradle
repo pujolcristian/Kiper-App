@@ -4,6 +4,9 @@ plugins {
     id 'kotlin-kapt'
     id 'dagger.hilt.android.plugin'
 }
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 
 android {
     namespace "com.kiper.app"
@@ -17,10 +20,36 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
+
+
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+        }
+    }
+
+    lintOptions {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
     buildTypes {
         debug {
             buildConfigField "String", "BASE_URL", '"https://api-develop.kiperconnect.com/device/"'
             buildConfigField "String", "WEB_SOCKET", '"ws://34.67.190.187:8090"'
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+        release {
+            buildConfigField "String", "BASE_URL", '"https://api.kiperconnect.com/device/command"'
+            buildConfigField "String", "WEB_SOCKET", '"ws://34.67.190.187:8090"'
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
         prod {
             buildConfigField "String", "BASE_URL", '"https://api.kiperconnect.com/device/command"'

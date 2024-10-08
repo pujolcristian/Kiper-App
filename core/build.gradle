@@ -14,12 +14,16 @@ android {
         versionCode 1
         versionName "1.0"
     }
-
     buildTypes {
+
 
         buildTypes {
             debug {
                 buildConfigField "String", "BASE_URL", '"https://api-develop.kiperconnect.com/device/"'
+                buildConfigField "String", "WEB_SOCKET", '"ws://34.67.190.187:8090"'
+            }
+            release {
+                buildConfigField "String", "BASE_URL", '"https://api.kiperconnect.com/device/command"'
                 buildConfigField "String", "WEB_SOCKET", '"ws://34.67.190.187:8090"'
             }
             prod {

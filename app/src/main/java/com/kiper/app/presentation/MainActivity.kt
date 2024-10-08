@@ -18,9 +18,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.kiper.app.R
-import com.kiper.app.service.MyAccessibilityService
 import com.kiper.app.service.SyncService
-import dagger.hilt.android.AndroidEntryPoint
 
 class MainActivity : AppCompatActivity() {
 
@@ -36,7 +34,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_activity)
-
         Log.d("MainActivity", "onCreate")
     }
 
@@ -95,12 +92,13 @@ class MainActivity : AppCompatActivity() {
                     showSetDefaultLauncherDialog()
                 } else {
                     startSyncService()
-                    if (!isAccessibilityServiceEnabled(this, MyAccessibilityService::class.java)) {
-                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                        startActivity(intent)
-                    } else {
-                        openPreviousLauncher()
-                    }
+                    /*   if (!isAccessibilityServiceEnabled(this, MyAccessibilityService::class.java)) {
+                           val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                           startActivity(intent)
+                       } else {
+
+                     */
+                    openPreviousLauncher()
                 }
             } else {
                 Toast.makeText(this, "Permisos necesarios no otorgados", Toast.LENGTH_SHORT).show()
@@ -139,22 +137,16 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         Log.d("MainActivity", "onResume")
-        println("${isAccessibilityServiceEnabled(this, MyAccessibilityService::class.java)}")
         if (allPermissionsGranted()) {
             if (!isDefaultLauncher()) {
                 showSetDefaultLauncherDialog()
             } else {
                 startSyncService()
                 if (!isDeviceLocked(this)) {
-                    if (!isAccessibilityServiceEnabled(this, MyAccessibilityService::class.java)) {
-                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                        startActivity(intent)
-                    } else {
                         Log.d("MainActivity", "isDeviceLocked: ${isDeviceLocked(this)}")
                         if (!isDeviceLocked(this)) {
                             openPreviousLauncher()
                         }
-                    }
                 }
             }
         } else {
