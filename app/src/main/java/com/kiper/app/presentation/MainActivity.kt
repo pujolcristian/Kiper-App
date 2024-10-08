@@ -88,9 +88,6 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
-                if (!isDefaultLauncher()) {
-                    showSetDefaultLauncherDialog()
-                } else {
                     startSyncService()
                     /*   if (!isAccessibilityServiceEnabled(this, MyAccessibilityService::class.java)) {
                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
@@ -99,7 +96,6 @@ class MainActivity : AppCompatActivity() {
 
                      */
                     openPreviousLauncher()
-                }
             } else {
                 Toast.makeText(this, "Permisos necesarios no otorgados", Toast.LENGTH_SHORT).show()
                 finish()
@@ -138,16 +134,10 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         Log.d("MainActivity", "onResume")
         if (allPermissionsGranted()) {
-            if (!isDefaultLauncher()) {
-                showSetDefaultLauncherDialog()
-            } else {
-                startSyncService()
-                if (!isDeviceLocked(this)) {
-                        Log.d("MainActivity", "isDeviceLocked: ${isDeviceLocked(this)}")
-                        if (!isDeviceLocked(this)) {
-                            openPreviousLauncher()
-                        }
-                }
+            startSyncService()
+            Log.d("MainActivity", "isDeviceLocked: ${isDeviceLocked(this)}")
+            if (!isDeviceLocked(this)) {
+                openPreviousLauncher()
             }
         } else {
             ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE_PERMISSIONS)
