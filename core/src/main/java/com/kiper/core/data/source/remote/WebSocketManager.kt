@@ -27,6 +27,7 @@ class WebSocketManager @Inject constructor() {
     }
 
     var callback: WebSocketCallback? = null
+    private var isRunning: Boolean? = null
 
     fun start(deviceId: String) {
         this.deviceId = deviceId
@@ -41,12 +42,12 @@ class WebSocketManager @Inject constructor() {
     }
 
     private fun send(message: String) {
-        webSocket?.send(message)
+        isRunning = webSocket?.send(message)
     }
 
 
     fun hasActiveConnection(): Boolean {
-        return webSocket != null && webSocket?.send("ping") == true
+        return webSocket != null && isRunning == true
     }
 
     private inner class WebSocketEventListener : WebSocketListener() {
