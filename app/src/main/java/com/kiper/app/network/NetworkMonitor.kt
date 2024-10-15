@@ -68,7 +68,7 @@ class NetworkMonitor(
                 val urlConnection: HttpURLConnection = url.openConnection() as HttpURLConnection
                 urlConnection.connectTimeout = 9000
                 urlConnection.connect()
-                val isConnected = urlConnection.responseCode == 204
+                val isConnected = urlConnection.responseCode in 200..299
                 urlConnection.disconnect()
                 isConnected
             } catch (e: Exception) {

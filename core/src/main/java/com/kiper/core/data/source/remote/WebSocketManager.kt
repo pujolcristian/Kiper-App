@@ -5,6 +5,7 @@ import com.kiper.core.BuildConfig
 import com.kiper.core.domain.model.WebSocketEventResponse
 import com.kiper.core.domain.model.WebSocketMessageRequest
 import com.kiper.core.domain.model.WebSocketSendRequest
+import com.kiper.core.util.Constants.TYPE_SEND_CONNECTION
 import com.kiper.core.util.Constants.TYPE_SEND_REGISTER
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -27,7 +28,6 @@ class WebSocketManager @Inject constructor() {
     }
 
     var callback: WebSocketCallback? = null
-    private var isRunning: Boolean? = null
 
     fun start(deviceId: String) {
         this.deviceId = deviceId
@@ -42,12 +42,18 @@ class WebSocketManager @Inject constructor() {
     }
 
     private fun send(message: String) {
-        isRunning = webSocket?.send(message)
+        webSocket?.send(message)
     }
 
 
     fun hasActiveConnection(): Boolean {
-        return webSocket != null && isRunning == true
+        return webSocket?.send(
+            Gson().toJson(
+                WebSocketSendRequest(
+                    clientId = deviceId, type = TYPE_SEND_CONNECTION
+                )
+            )
+        ) == true
     }
 
     private inner class WebSocketEventListener : WebSocketListener() {

@@ -13,6 +13,8 @@ class ScreenStateReceiver(private val service: MyAccessibilityService) : Broadca
         if (intent != null && (intent.action == Intent.ACTION_SCREEN_OFF)) {
             Log.d("ScreenStateReceiver", "Screen off")
             service.closeApp("com.sgtc.launcher")
+            val serviceIntent = Intent(context, MainActivity::class.java)
+            context?.startActivity(serviceIntent)
         }
 
         if (intent != null && intent.action == Intent.ACTION_SCREEN_ON || intent?.action == Intent.ACTION_USER_PRESENT) {

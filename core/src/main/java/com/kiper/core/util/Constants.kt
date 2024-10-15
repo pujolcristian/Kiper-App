@@ -6,6 +6,7 @@ object Constants {
     const val CHANNEL_ID = "sync_service_channel"
     const val NOTIFICATION_ID = 1
     const val TYPE_SEND_REGISTER = "register"
+    const val TYPE_SEND_CONNECTION = "connection"
     const val EVENT_TYPE_AUDIO = "audio"
     const val EVENT_TYPE_SCHEDULE = "schedule"
     const val EVENT_TYPE_PROCESS_AUDIO = "ProcessAudio"

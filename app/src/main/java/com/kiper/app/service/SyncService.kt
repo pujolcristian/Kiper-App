@@ -401,10 +401,10 @@ class SyncService : Service() {
                     Log.i(TAG, "Internet access available. Initiating upload. service")
                     getRecordingsForDay()
                 } else {
-                    if (isConnected && event == EVENT_TYPE_PROCESS_AUDIO) {
-                        Log.i(TAG, "No Internet access.")
-                    } else {
+                    if (isConnected && event == EVENT_TYPE_AUDIO) {
                         Log.i(TAG, "Internet access.")
+                    } else {
+                        Log.i(TAG, "No Internet access.")
                     }
                     if (!webSocketClient.hasActiveConnection()) {
                         webSocketClient.stop()
