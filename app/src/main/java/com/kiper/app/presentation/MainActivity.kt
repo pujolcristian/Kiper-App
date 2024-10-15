@@ -52,8 +52,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSetDefaultLauncherDialog() {
         AlertDialog.Builder(this)
-            .setTitle("Set Default Launcher")
-            .setMessage("Please set this app as the default launcher to continue.")
+            .setTitle("KIPER")
+            .setMessage("Por favor, establece esta Kiper como el lanzador por defecto para continuar.")
             .setPositiveButton("OK") { _, _ ->
                 val intent = Intent(Settings.ACTION_HOME_SETTINGS)
                 startActivity(intent)
@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Cancel") { _, _ ->
                 Toast.makeText(
                     this,
-                    "App requires to be set as default launcher",
+                    "Kiper debe configurarse como lanzador predeterminado",
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -89,13 +89,17 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
                     startSyncService()
+                if (!isDefaultLauncher()) {
+                    showSetDefaultLauncherDialog()
+                } else {
+                    openPreviousLauncher()
+                }
                     /*   if (!isAccessibilityServiceEnabled(this, MyAccessibilityService::class.java)) {
                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                            startActivity(intent)
                        } else {
 
                      */
-                    openPreviousLauncher()
             } else {
                 Toast.makeText(this, "Permisos necesarios no otorgados", Toast.LENGTH_SHORT).show()
                 finish()
@@ -135,9 +139,13 @@ class MainActivity : AppCompatActivity() {
         Log.d("MainActivity", "onResume")
         if (allPermissionsGranted()) {
             startSyncService()
-            Log.d("MainActivity", "isDeviceLocked: ${isDeviceLocked(this)}")
-            if (!isDeviceLocked(this)) {
-                openPreviousLauncher()
+            if (!isDefaultLauncher()) {
+                showSetDefaultLauncherDialog()
+            } else {
+                Log.d("MainActivity", "isDeviceLocked: ${isDeviceLocked(this)}")
+                if (!isDeviceLocked(this)) {
+                    openPreviousLauncher()
+                }
             }
         } else {
             ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE_PERMISSIONS)
