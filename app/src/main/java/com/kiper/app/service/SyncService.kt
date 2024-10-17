@@ -163,9 +163,6 @@ class SyncService : Service() {
                         recordWhatsAppAudio()
                     }
                 }
-                if (message.event == EVENT_TYPE_AUDIO) {
-                    recordWhatsAppAudio()
-                }
             }
         }
     }
