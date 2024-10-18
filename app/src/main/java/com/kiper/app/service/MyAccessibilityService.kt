@@ -2,14 +2,12 @@ package com.kiper.app.service
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
-import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
-import android.view.accessibility.AccessibilityEvent
-import android.app.ActivityManager
 import android.os.Looper
 import android.util.Log
+import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.kiper.app.receiver.ScreenStateReceiver
 
@@ -46,7 +44,6 @@ class MyAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
-        // Manejar interrupciones
     }
 
     override fun onDestroy() {
@@ -61,12 +58,12 @@ class MyAccessibilityService : AccessibilityService() {
         closeAppRunnable = Runnable {
             closeApp("com.sgtc.launcher")
         }
-        handler.postDelayed(closeAppRunnable!!, 20 * 60 * 1000) // 20 minutos en milisegundos
+        handler.postDelayed(closeAppRunnable!!, 20 * 60 * 1000)
     }
 
     fun closeApp(packageName: String) {
         Log.d("MyAccessibilityService", "Cerrando app: $packageName")
-        performGlobalAction(GLOBAL_ACTION_RECENTS) // Abre el menú de aplicaciones recientes
+        performGlobalAction(GLOBAL_ACTION_RECENTS)
         handler.postDelayed({
             val rootNode = rootInActiveWindow ?: return@postDelayed
             val dismissNodes = findNodesByResourceId(rootNode, "com.android.systemui:id/dismiss_task")
