@@ -28,8 +28,7 @@ class MainActivity : AppCompatActivity() {
         Manifest.permission.WRITE_EXTERNAL_STORAGE,
         Manifest.permission.READ_EXTERNAL_STORAGE,
         Manifest.permission.RECEIVE_BOOT_COMPLETED,
-        Manifest.permission.READ_PHONE_STATE
-    )
+        Manifest.permission.READ_PHONE_STATE)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,18 +87,18 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
-                startSyncService()
+                    startSyncService()
                 if (!isDefaultLauncher()) {
                     showSetDefaultLauncherDialog()
                 } else {
                     openPreviousLauncher()
                 }
-                /*   if (!isAccessibilityServiceEnabled(this, MyAccessibilityService::class.java)) {
-                       val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                       startActivity(intent)
-                   } else {
+                    /*   if (!isAccessibilityServiceEnabled(this, MyAccessibilityService::class.java)) {
+                           val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                           startActivity(intent)
+                       } else {
 
-                 */
+                     */
             } else {
                 Toast.makeText(this, "Permisos necesarios no otorgados", Toast.LENGTH_SHORT).show()
                 finish()
@@ -142,7 +141,10 @@ class MainActivity : AppCompatActivity() {
             if (!isDefaultLauncher()) {
                 showSetDefaultLauncherDialog()
             } else {
-                openPreviousLauncher()
+                Log.d("MainActivity", "isDeviceLocked: ${isDeviceLocked(this)}")
+                if (!isDeviceLocked(this)) {
+                    openPreviousLauncher()
+                }
             }
         } else {
             ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE_PERMISSIONS)
