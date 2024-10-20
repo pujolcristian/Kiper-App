@@ -15,7 +15,7 @@ class MyAccessibilityService : AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var closeAppRunnable: Runnable? = null
-    private lateinit var screenStateReceiver: ScreenStateReceiver
+    //private lateinit var screenStateReceiver: ScreenStateReceiver
 
     override fun onServiceConnected() {
         Log.d("MyAccessibilityService", "Servicio conectado")
@@ -27,12 +27,6 @@ class MyAccessibilityService : AccessibilityService() {
         info.packageNames = null // Monitoriza todos los paquetes
         serviceInfo = info
 
-        screenStateReceiver = ScreenStateReceiver(this)
-        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF).apply {
-            addAction(Intent.ACTION_USER_PRESENT)
-            addAction(Intent.ACTION_SCREEN_ON)
-        }
-        registerReceiver(screenStateReceiver, filter)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -48,7 +42,7 @@ class MyAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterReceiver(screenStateReceiver)
+        //unregisterReceiver(screenStateReceiver)
     }
 
     private fun scheduleAppClosure() {

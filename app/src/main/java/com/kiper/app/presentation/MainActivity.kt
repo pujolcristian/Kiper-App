@@ -2,10 +2,12 @@ package com.kiper.app.presentation
 
 import android.Manifest
 import android.accessibilityservice.AccessibilityService
+import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.PowerManager
@@ -18,6 +20,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.kiper.app.R
+import com.kiper.app.receiver.ScreenStateReceiver
 import com.kiper.app.service.SyncService
 
 class MainActivity : AppCompatActivity() {
@@ -29,11 +32,19 @@ class MainActivity : AppCompatActivity() {
         Manifest.permission.READ_EXTERNAL_STORAGE,
         Manifest.permission.RECEIVE_BOOT_COMPLETED,
         Manifest.permission.READ_PHONE_STATE)
+    private lateinit var screenStateReceiver: ScreenStateReceiver
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_activity)
         Log.d("MainActivity", "onCreate")
+        screenStateReceiver = ScreenStateReceiver()
+        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF).apply {
+            addAction(Intent.ACTION_USER_PRESENT)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        registerReceiver(screenStateReceiver, filter)
     }
 
     private fun allPermissionsGranted() = permissions.all {
@@ -87,18 +98,24 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
-                    startSyncService()
+                startSyncService()
                 if (!isDefaultLauncher()) {
                     showSetDefaultLauncherDialog()
                 } else {
-                    openPreviousLauncher()
+                    if (!isDeviceLocked(this)) {
+                        println("isDeviceLocked1: ${isDeviceLocked(this)}")
+                        openPreviousLauncher()
+                    } else {
+                        println("isDeviceLocked2: ${isDeviceLocked(this)}")
+                        closePreviousLauncher(this.applicationContext)
+                    }
                 }
-                    /*   if (!isAccessibilityServiceEnabled(this, MyAccessibilityService::class.java)) {
-                           val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                           startActivity(intent)
-                       } else {
+                /*   if (!isAccessibilityServiceEnabled(this, MyAccessibilityService::class.java)) {
+                       val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                       startActivity(intent)
+                   } else {
 
-                     */
+                 */
             } else {
                 Toast.makeText(this, "Permisos necesarios no otorgados", Toast.LENGTH_SHORT).show()
                 finish()
@@ -133,6 +150,13 @@ class MainActivity : AppCompatActivity() {
         return keyguardManager.isKeyguardLocked || !powerManager.isInteractive
     }
 
+    private fun closePreviousLauncher(context: Context) {
+        Log.i("MainActivity", "Cerrando launcher")
+        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        // Cierra la aplicación del otro launcher (si es posible en tu caso específico)
+        activityManager.killBackgroundProcesses("com.sgtc.launcher")
+    }
+
     override fun onResume() {
         super.onResume()
         Log.d("MainActivity", "onResume")
@@ -143,7 +167,11 @@ class MainActivity : AppCompatActivity() {
             } else {
                 Log.d("MainActivity", "isDeviceLocked: ${isDeviceLocked(this)}")
                 if (!isDeviceLocked(this)) {
+                    println("isDeviceLocked3: ${isDeviceLocked(this)}")
                     openPreviousLauncher()
+                } else {
+                    println("isDeviceLocked4: ${isDeviceLocked(this)}")
+                    closePreviousLauncher(this.applicationContext)
                 }
             }
         } else {
