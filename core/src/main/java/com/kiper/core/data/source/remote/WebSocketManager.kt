@@ -1,5 +1,6 @@
 package com.kiper.core.data.source.remote
 
+import android.util.Log
 import com.google.gson.Gson
 import com.kiper.core.BuildConfig
 import com.kiper.core.domain.model.WebSocketEventResponse
@@ -47,13 +48,15 @@ class WebSocketManager @Inject constructor() {
 
 
     fun hasActiveConnection(): Boolean {
-        return webSocket?.send(
+        val test = webSocket?.send(
             Gson().toJson(
                 WebSocketSendRequest(
                     clientId = deviceId, type = TYPE_SEND_CONNECTION
                 )
             )
         ) == true
+        Log.i("WebSocketManager", "hasActiveConnection: $test")
+        return test
     }
 
     private inner class WebSocketEventListener : WebSocketListener() {

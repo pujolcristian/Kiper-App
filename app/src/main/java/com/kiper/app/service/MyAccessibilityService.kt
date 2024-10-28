@@ -2,14 +2,11 @@ package com.kiper.app.service
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
-import android.content.Intent
-import android.content.IntentFilter
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import com.kiper.app.receiver.ScreenStateReceiver
 
 class MyAccessibilityService : AccessibilityService() {
 
