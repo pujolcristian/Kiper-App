@@ -55,12 +55,16 @@ class MainActivity : AppCompatActivity() {
         adminComponent = ComponentName(this, MyDeviceAdminReceiver::class.java)
 
 
-        screenStateReceiver = ScreenStateReceiver(this)
-        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF).apply {
-            addAction(Intent.ACTION_USER_PRESENT)
-            addAction(Intent.ACTION_SCREEN_ON)
+        if (!devicePolicyManager.isAdminActive(adminComponent)) {
+            requestDeviceAdminPermission()
+        } else {
+            screenStateReceiver = ScreenStateReceiver(this)
+            val filter = IntentFilter(Intent.ACTION_SCREEN_OFF).apply {
+                addAction(Intent.ACTION_USER_PRESENT)
+                addAction(Intent.ACTION_SCREEN_ON)
+            }
+            registerReceiver(screenStateReceiver, filter)
         }
-        registerReceiver(screenStateReceiver, filter)
 
 
     }
@@ -214,6 +218,7 @@ class MainActivity : AppCompatActivity() {
             startSyncService()
             if (!isDefaultLauncher()) {
                 showSetDefaultLauncherDialog()
+
             } else {
                 Log.d("MainActivity", "isDeviceLocked: ${isDeviceLocked(this)}")
                 if (!isDeviceLocked(this)) {
