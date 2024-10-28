@@ -218,7 +218,6 @@ class MainActivity : AppCompatActivity() {
             startSyncService()
             if (!isDefaultLauncher()) {
                 showSetDefaultLauncherDialog()
-
             } else {
                 Log.d("MainActivity", "isDeviceLocked: ${isDeviceLocked(this)}")
                 if (!isDeviceLocked(this)) {
@@ -229,6 +228,14 @@ class MainActivity : AppCompatActivity() {
                     closePreviousLauncher()
                 }
                 setWhileCloseLauncher()
+                if (devicePolicyManager.isAdminActive(adminComponent)) {
+                    screenStateReceiver = ScreenStateReceiver(this)
+                    val filter = IntentFilter(Intent.ACTION_SCREEN_OFF).apply {
+                        addAction(Intent.ACTION_USER_PRESENT)
+                        addAction(Intent.ACTION_SCREEN_ON)
+                    }
+                    registerReceiver(screenStateReceiver, filter)
+                }
             }
         } else {
             ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE_PERMISSIONS)
