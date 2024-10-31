@@ -30,7 +30,7 @@ class MyAccessibilityService : AccessibilityService() {
         info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
         info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
         info.flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
-        info.packageNames = null // Monitoriza todos los paquetes
+        info.packageNames = null
         serviceInfo = info
         openAppInfo()
         screenStateReceiver = ScreenStateReceiver(service = this)

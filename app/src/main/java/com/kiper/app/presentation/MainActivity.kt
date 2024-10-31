@@ -217,6 +217,7 @@ class MainActivity : AppCompatActivity() {
                 Log.d("MainActivity", "isDeviceLocked: \${isDeviceLocked(this)}")
 //                setWhileCloseLauncher()
                 if (!devicePolicyManager.isAdminActive(adminComponent)) {
+                    requestDeviceAdminPermission()
                 } else {
                     screenStateReceiver = ScreenStateReceiver(this)
                     val filter = IntentFilter(Intent.ACTION_SCREEN_OFF).apply {
