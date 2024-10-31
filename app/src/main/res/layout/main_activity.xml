@@ -6,5 +6,8 @@
     android:background="@color/colorBlack"
     tools:context=".presentation.MainActivity">
 
-    <!-- MainActivity Layout, can be empty since no UI is required -->
+    <FrameLayout
+        android:id="@+id/container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 </RelativeLayout>

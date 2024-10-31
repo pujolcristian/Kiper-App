@@ -1,6 +1,7 @@
 package com.kiper.app.presentation
 
 import android.app.Application
+import android.content.Context
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.room.Room
 import androidx.work.Configuration
@@ -19,6 +20,9 @@ class KiperApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
+        Thread.setDefaultUncaughtExceptionHandler(MyExceptionHandler())
+
         database = Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java, "app-database"
@@ -28,4 +32,9 @@ class KiperApp : Application(), Configuration.Provider {
         Configuration.Builder()
             .setWorkerFactory(workerFactory)
             .build()
+
+    companion object {
+        lateinit var instance: KiperApp
+            private set
+    }
 }

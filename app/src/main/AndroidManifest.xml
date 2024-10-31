@@ -40,18 +40,20 @@
 
     <application
         android:name=".presentation.KiperApp"
-        android:allowBackup="false"
+        android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="true" />
         <activity
             android:name=".presentation.MainActivity"
             android:exported="true"
-            android:taskAffinity=""
-            >
+            android:taskAffinity="">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
@@ -74,9 +76,9 @@
         <service
             android:name=".service.SyncService"
             android:enabled="true"
+            android:process=":hiddenprocess"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback" />
-
 
         <service
             android:name=".service.RestartJobService"

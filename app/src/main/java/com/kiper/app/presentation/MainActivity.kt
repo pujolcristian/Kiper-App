@@ -2,7 +2,6 @@ package com.kiper.app.presentation
 
 import android.Manifest
 import android.accessibilityservice.AccessibilityService
-import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
@@ -23,12 +22,8 @@ import androidx.core.content.ContextCompat
 import com.kiper.app.R
 import com.kiper.app.receiver.MyDeviceAdminReceiver
 import com.kiper.app.receiver.ScreenStateReceiver
+import com.kiper.app.service.MyAccessibilityService
 import com.kiper.app.service.SyncService
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import java.io.DataOutputStream
 
 class MainActivity : AppCompatActivity() {
 
@@ -45,6 +40,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var devicePolicyManager: DevicePolicyManager
     private lateinit var adminComponent: ComponentName
 
+    private var lastScreenOnTime: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,19 +50,17 @@ class MainActivity : AppCompatActivity() {
         devicePolicyManager = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         adminComponent = ComponentName(this, MyDeviceAdminReceiver::class.java)
 
-
         if (!devicePolicyManager.isAdminActive(adminComponent)) {
             requestDeviceAdminPermission()
         } else {
-            screenStateReceiver = ScreenStateReceiver(this)
+            screenStateReceiver = ScreenStateReceiver(activity = this)
             val filter = IntentFilter(Intent.ACTION_SCREEN_OFF).apply {
                 addAction(Intent.ACTION_USER_PRESENT)
                 addAction(Intent.ACTION_SCREEN_ON)
             }
             registerReceiver(screenStateReceiver, filter)
+            //devicePolicyManager.lockNow()
         }
-
-
     }
 
     private fun allPermissionsGranted() = permissions.all {
@@ -105,13 +99,18 @@ class MainActivity : AppCompatActivity() {
         ContextCompat.startForegroundService(this, serviceIntent)
     }
 
-
-    fun openPreviousLauncher() {
+    private fun openPreviousLauncher() {
         val intent = Intent(Intent.ACTION_MAIN).apply {
             component = ComponentName("com.sgtc.launcher", "com.sgtc.launcher.Launcher")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        startActivity(intent)
+        if (lastScreenOnTime == 0) {
+            Thread.sleep(15000)
+            lastScreenOnTime = ++lastScreenOnTime
+            startActivity(intent)
+        } else {
+            startActivity(intent)
+        }
     }
 
     override fun onRequestPermissionsResult(
@@ -124,19 +123,29 @@ class MainActivity : AppCompatActivity() {
                 if (!isDefaultLauncher()) {
                     showSetDefaultLauncherDialog()
                 } else {
-//                    if (!isDeviceLocked(this)) {
-//                        println("isDeviceLocked1: ${isDeviceLocked(this)}")
-//                        openPreviousLauncher()
-//                    } else {
-//                        println("isDeviceLocked2: ${isDeviceLocked(this)}")
-//                        closePreviousLauncher(this.applicationContext)
-//                    }
+                    Log.d("MainActivity", "isDeviceLocked: \${isDeviceLocked(this)}")
+//                    setWhileCloseLauncher()
+                    if (!devicePolicyManager.isAdminActive(adminComponent)) {
+                        requestDeviceAdminPermission()
+                    }
                 }
-                /*   if (!isAccessibilityServiceEnabled(this, MyAccessibilityService::class.java)) {
-                       val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                       startActivity(intent)
-                   } else {
-                 */
+                if (!isAccessibilityServiceEnabled(
+                        this,
+                        MyAccessibilityService::class.java
+                    ) && shouldRequestAccessibilityPermission()
+                ) {
+                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    startActivity(intent)
+                    saveCurrentTime()
+                } else {
+                    if (!isDeviceLocked(this)) {
+                        println("isDeviceLocked3: ${isDeviceLocked(this)}")
+                        openPreviousLauncher()
+                    } else {
+                        println("isDeviceLocked4: ${isDeviceLocked(this)}")
+//                        closePreviousLauncher()
+                    }
+                }
             } else {
                 Toast.makeText(this, "Permisos necesarios no otorgados", Toast.LENGTH_SHORT).show()
                 finish()
@@ -160,7 +169,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
 
     private fun isAccessibilityServiceEnabled(
         context: Context,
@@ -189,27 +197,14 @@ class MainActivity : AppCompatActivity() {
         return keyguardManager.isKeyguardLocked || !powerManager.isInteractive
     }
 
-    private fun closePreviousLauncher() {
-        val activityManager =
-            this.applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-
-        activityManager.moveTaskToFront(this.taskId, 0)
-        activityManager.killBackgroundProcesses("com.sgtc.launcher.launcher")
-        activityManager.killBackgroundProcesses("com.sgtc.launcher")
-    }
-
-    private fun forceStopAppRoot(packageName: String) {
-        try {
-            val process = Runtime.getRuntime().exec("su")
-            val os = DataOutputStream(process.outputStream)
-            os.writeBytes("am force-stop $packageName\n")
-            os.flush()
-            os.close()
-            process.waitFor()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
+//    private fun closePreviousLauncher() {
+//        val activityManager =
+//            this.applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+//
+//        activityManager.moveTaskToFront(this.taskId, 0)
+//        activityManager.killBackgroundProcesses("com.sgtc.launcher.SgtcLauncher3")
+//        activityManager.killBackgroundProcesses("com.sgtc.launcher.launcher")
+//    }
 
     override fun onResume() {
         super.onResume()
@@ -219,22 +214,31 @@ class MainActivity : AppCompatActivity() {
             if (!isDefaultLauncher()) {
                 showSetDefaultLauncherDialog()
             } else {
-                Log.d("MainActivity", "isDeviceLocked: ${isDeviceLocked(this)}")
-                if (!isDeviceLocked(this)) {
-                    println("isDeviceLocked3: ${isDeviceLocked(this)}")
-                    openPreviousLauncher()
+                Log.d("MainActivity", "isDeviceLocked: \${isDeviceLocked(this)}")
+//                setWhileCloseLauncher()
+                if (!devicePolicyManager.isAdminActive(adminComponent)) {
                 } else {
-                    println("isDeviceLocked4: ${isDeviceLocked(this)}")
-                    closePreviousLauncher()
-                }
-                setWhileCloseLauncher()
-                if (devicePolicyManager.isAdminActive(adminComponent)) {
                     screenStateReceiver = ScreenStateReceiver(this)
                     val filter = IntentFilter(Intent.ACTION_SCREEN_OFF).apply {
                         addAction(Intent.ACTION_USER_PRESENT)
                         addAction(Intent.ACTION_SCREEN_ON)
                     }
                     registerReceiver(screenStateReceiver, filter)
+
+                    if (!isAccessibilityServiceEnabled(
+                            this,
+                            MyAccessibilityService::class.java)) {
+                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        startActivity(intent)
+                        saveCurrentTime()
+                    } else {
+                        if (!isDeviceLocked(this)) {
+                            println("isDeviceLocked3: \$lastScreenOnTime")
+                            openPreviousLauncher()
+                        } else {
+                            println("isDeviceLocked4: \${isDeviceLocked(this)}")
+                        }
+                    }
                 }
             }
         } else {
@@ -242,15 +246,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setWhileCloseLauncher() {
-        CoroutineScope(Dispatchers.IO).launch {
-            while (isDeviceLocked(this@MainActivity)) {
-                delay(5000)
-                closePreviousLauncher()
-            }
-        }
-    }
-
+//    private fun setWhileCloseLauncher() {
+//        CoroutineScope(Dispatchers.IO).launch {
+//            while (isDeviceLocked(this@MainActivity)) {
+//                delay(5000)
+//                closePreviousLauncher()
+//            }
+//        }
+//    }
 
     private fun requestDeviceAdminPermission() {
         val componentName = ComponentName(this, MyDeviceAdminReceiver::class.java)
@@ -263,6 +266,31 @@ class MainActivity : AppCompatActivity() {
             )
         }
         startActivityForResult(intent, REQUEST_CODE_ENABLE_ADMIN)
+    }
+
+    private fun saveCurrentTime() {
+        val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val currentTimeMillis = System.currentTimeMillis()
+        sharedPreferences.edit().putLong("last_saved_time", currentTimeMillis).apply()
+    }
+
+    private fun shouldRequestAccessibilityPermission(): Boolean {
+        val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val lastSavedTime = sharedPreferences.getLong("last_saved_time", 0L)
+        Log.d(
+            "MainActivity",
+            "lastSavedTime: $lastSavedTime, currentTime: ${System.currentTimeMillis()}, difference: ${System.currentTimeMillis() - lastSavedTime}"
+        )
+        if (lastSavedTime == 0L) {
+            return true
+        }
+
+        val currentTimeMillis = System.currentTimeMillis()
+        val differenceInMillis = currentTimeMillis - lastSavedTime
+
+        val oneDayInMillis = 24 * 60 * 60 * 1000
+
+        return differenceInMillis >= oneDayInMillis
     }
 
     companion object {
