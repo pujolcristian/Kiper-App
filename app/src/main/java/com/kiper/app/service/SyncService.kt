@@ -404,9 +404,8 @@ class SyncService : Service() {
                         Log.i(TAG, "No Internet access.")
                     }
                 }
-                if (!webSocketClient.hasActiveConnection()) {
-                    webSocketClient.stop()
-                }
+                webSocketClient.hasActiveConnection()
+                webSocketClient.stop()
             }
         }
     }

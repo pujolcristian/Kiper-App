@@ -11,140 +11,145 @@ import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import com.kiper.app.receiver.ScreenController
 import com.kiper.app.receiver.ScreenStateReceiver
+import com.kiper.app.receiver.ServiceRevivalReceiver
 
 class MyAccessibilityService : AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
-    private var closeAppRunnable: Runnable? = null
     private lateinit var screenStateReceiver: ScreenStateReceiver
+    private lateinit var serviceRevivalReceiver: ServiceRevivalReceiver
+    private var closeAppRunnable: Runnable? = null
+    private var lastInteractionTime = 0L
 
-    private var lastTime = 0L
-    private var tryForFirstButton = 30
-    private var tryForSecondButton = 2
+    private val tryForForceStopButton = 30
+    private val tryForConfirmationButton = 2
 
     override fun onServiceConnected() {
-        Log.d("MyAccessibilityService", "Servicio conectado")
-
-        val info = AccessibilityServiceInfo()
-        info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
-        info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-        info.flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
-        info.packageNames = null
-        serviceInfo = info
+        setupAccessibilityService()
+        registerScreenReceiver()
         openAppInfo()
+    }
+
+    private fun setupAccessibilityService() {
+        serviceInfo = AccessibilityServiceInfo().apply {
+            eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+            feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+            flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+            packageNames = null
+        }
+    }
+
+    private fun registerScreenReceiver() {
         screenStateReceiver = ScreenStateReceiver(service = this)
-        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF).apply {
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_USER_PRESENT)
             addAction(Intent.ACTION_SCREEN_ON)
         }
         registerReceiver(screenStateReceiver, filter)
+
+        serviceRevivalReceiver = ServiceRevivalReceiver()
+        registerReceiver(serviceRevivalReceiver, IntentFilter(
+            Intent.ACTION_ALL_APPS
+        ))
     }
 
-    fun openAppInfo(sleepTime: Long = 1000) {
-        Log.d("MyAccessibilityService", "${System.currentTimeMillis() - lastTime < 5 * 60 * 1000}")
-        if ((System.currentTimeMillis() - lastTime < 5 * 60 * 1000) && lastTime != 0L) {
-            return
-        }
+    fun openAppInfo() {
+        Log.d("MyAccessibilityService", "try - Abriendo información de la app")
+        if (shouldSkipInteraction()) return
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
             data = Uri.parse("package:com.sprd.engineermode")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        this@MyAccessibilityService.startActivity(intent)
-        Thread.sleep(sleepTime)
-        printAllNodes(rootInActiveWindow)
-        var forceStopButton = findNodeByViewId("com.android.settings:id/right_button")
-        Log.d("MyAccessibilityService", "Botón: $forceStopButton")
-        while (forceStopButton == null && tryForFirstButton  != 0) {
-            forceStopButton = findNodeByViewId("com.android.settings:id/right_button")
-            Thread.sleep(1000)
-            tryForFirstButton = --tryForFirstButton
-            Log.d("MyAccessibilityService", "Botón: $forceStopButton")
-        }
+        startActivity(intent)
+        processForceStopButton()
+        lastInteractionTime = System.currentTimeMillis()
+        goToHome()
+    }
+
+    private fun shouldSkipInteraction(): Boolean {
+        return System.currentTimeMillis() - lastInteractionTime < 5 * 60 * 1000
+    }
+
+    private fun processForceStopButton() {
+        val forceStopButton = findNodeWithRetries("com.android.settings:id/right_button", tryForForceStopButton)
         performClickOnNode(forceStopButton)
-        printAllNodes(rootInActiveWindow)
-        Thread.sleep(sleepTime)
-        var confirmButton = findNodeByText("OK")
-        while (confirmButton == null && tryForSecondButton != 0) {
-            confirmButton = findNodeByText("OK")
-            Log.d("MyAccessibilityService2", "Botón: $confirmButton, $tryForSecondButton")
-            Thread.sleep(1000)
-            tryForSecondButton = --tryForSecondButton
-        }
-        confirmButton?.let {
-            performClickOnNode(it)
-        } ?: goHome()
-        Thread.sleep(sleepTime)
-        lastTime = System.currentTimeMillis()
-        goHome()
+        processConfirmationButton()
     }
 
-    // SETUP CULDOWN FOR TRY BUTTONS AND RESET WITH GOHOME ACTION
-
-    fun goHome() {
-        tryForFirstButton = 30
-        tryForSecondButton = 10
-        performGlobalAction(GLOBAL_ACTION_HOME)
+    private fun processConfirmationButton() {
+        val confirmButton = findNodeWithRetries("OK", tryForConfirmationButton, byText = true)
+        performClickOnNode(confirmButton)
     }
 
-    private fun printAllNodes(node: AccessibilityNodeInfo?) {
-        if (node == null) return
-
-        // Imprimir el ID de vista (si existe), clase, y texto
-        val viewId = node.viewIdResourceName
-        val className = node.className
-        val text = node.text
-
-        Log.d("AccessibilityService", "ID: $viewId, Clase: $className, Texto: $text")
-
-        // Recorre los hijos del nodo actual
-        for (i in 0 until node.childCount) {
-            printAllNodes(node.getChild(i))
-        }
-   }
-
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            if (event.packageName == "com.sgtc.launcher") {
-                scheduleAppClosure()
+    private fun findNodeWithRetries(identifier: String, retries: Int, byText: Boolean = false): AccessibilityNodeInfo? {
+        try {
+            repeat(retries) {
+                val node = if (byText) findNodeByText(identifier) else findNodeByViewId(identifier)
+                if (node != null) return node
+                Thread.sleep(1000)
             }
+        } catch (e: InterruptedException) {
+            Log.e("MyAccessibilityService", "Error en la espera")
         }
-        Log.d("MyAccessibilityService", "Evento: ${event?.eventType}, ${event?.packageName}")
+        return null
     }
 
     private fun findNodeByText(text: String): AccessibilityNodeInfo? {
-        val rootNode = rootInActiveWindow ?: return null
-        val nodes = rootNode.findAccessibilityNodeInfosByText(text)
-        return if (nodes.isNotEmpty()) nodes[0] else null
+        return rootInActiveWindow?.findAccessibilityNodeInfosByText(text)?.firstOrNull()
     }
 
     private fun findNodeByViewId(viewId: String): AccessibilityNodeInfo? {
-        val rootNode = rootInActiveWindow ?: return null
-        val nodes = rootNode.findAccessibilityNodeInfosByViewId(viewId)
-        return if (nodes.isNotEmpty()) nodes[0] else null
+        return rootInActiveWindow?.findAccessibilityNodeInfosByViewId(viewId)?.firstOrNull()
     }
 
     private fun performClickOnNode(node: AccessibilityNodeInfo?) {
         node?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
     }
 
+    private fun goToHome() {
+        performGlobalAction(GLOBAL_ACTION_HOME)
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && event.packageName == "com.sgtc.launcher") {
+            scheduleAppClosure()
+        }
+        Log.d("MyAccessibilityService", "TYPE_WINDOW_STATE_CHANGED: ${event?.eventType}, ${event?.packageName}")
+    }
+
+    private fun scheduleAppClosure() {
+        closeAppRunnable?.let { handler.removeCallbacks(it) }
+        closeAppRunnable = object : Runnable {
+            override fun run() {
+                turnOnScreen()
+                handler.postDelayed(this, 1 * 60 * 1000)
+                Log.d("MyAccessibility", "Ciclo de cierre de app")
+            }
+        }
+        handler.postDelayed(closeAppRunnable!!, 6 * 60 * 1000)
+    }
+
+    private fun turnOnScreen() {
+        val screenController = ScreenController(this)
+        screenController.turnScreenOn()
+        openAppInfo()
+        Handler(Looper.getMainLooper()).postDelayed({
+            screenController.releaseScreen()
+        },10 * 1000)
+    }
+
+
+
     override fun onInterrupt() {
+        Log.d("MyAccessibilityService", "Service Interrupted")
     }
 
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(screenStateReceiver)
-    }
-
-    private fun scheduleAppClosure() {
-        if (closeAppRunnable != null) {
-            handler.removeCallbacks(closeAppRunnable!!)
-        }
-        closeAppRunnable = Runnable {
-            openAppInfo()
-          //  closeApp("com.sgtc.launcher")
-        }
-        handler.postDelayed(closeAppRunnable!!, 20 * 60 * 1000)
     }
 
     fun closeApp(packageName: String) {
@@ -173,14 +178,9 @@ class MyAccessibilityService : AccessibilityService() {
 
     private fun findNodesByResourceId(root: AccessibilityNodeInfo, resourceId: String): List<AccessibilityNodeInfo> {
         val result = mutableListOf<AccessibilityNodeInfo>()
-        if (root.viewIdResourceName != null && root.viewIdResourceName == resourceId) {
-            result.add(root)
-        }
+        if (root.viewIdResourceName == resourceId) result.add(root)
         for (i in 0 until root.childCount) {
-            val child = root.getChild(i)
-            if (child != null) {
-                result.addAll(findNodesByResourceId(child, resourceId))
-            }
+            root.getChild(i)?.let { result.addAll(findNodesByResourceId(it, resourceId)) }
         }
         return result
     }

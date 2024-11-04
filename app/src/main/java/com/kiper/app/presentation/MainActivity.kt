@@ -105,7 +105,7 @@ class MainActivity : AppCompatActivity() {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         if (lastScreenOnTime == 0) {
-            Thread.sleep(15000)
+            Thread.sleep(3000)
             lastScreenOnTime = ++lastScreenOnTime
             startActivity(intent)
         } else {
@@ -138,13 +138,8 @@ class MainActivity : AppCompatActivity() {
                     startActivity(intent)
                     saveCurrentTime()
                 } else {
-                    if (!isDeviceLocked(this)) {
-                        println("isDeviceLocked3: ${isDeviceLocked(this)}")
-                        openPreviousLauncher()
-                    } else {
-                        println("isDeviceLocked4: ${isDeviceLocked(this)}")
-//                        closePreviousLauncher()
-                    }
+                    println("isDeviceLocked3: ${isDeviceLocked(this)}")
+                    openPreviousLauncher()
                 }
             } else {
                 Toast.makeText(this, "Permisos necesarios no otorgados", Toast.LENGTH_SHORT).show()
@@ -233,12 +228,7 @@ class MainActivity : AppCompatActivity() {
                         startActivity(intent)
                         saveCurrentTime()
                     } else {
-                        if (!isDeviceLocked(this)) {
-                            println("isDeviceLocked3: \$lastScreenOnTime")
-                            openPreviousLauncher()
-                        } else {
-                            println("isDeviceLocked4: \${isDeviceLocked(this)}")
-                        }
+                        openPreviousLauncher()
                     }
                 }
             }
