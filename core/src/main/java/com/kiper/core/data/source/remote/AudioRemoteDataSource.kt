@@ -1,5 +1,6 @@
 package com.kiper.core.data.source.remote
 
+import android.util.Log
 import com.kiper.core.data.ApiService
 import com.kiper.core.data.dto.ProgressRequestBody
 import com.kiper.core.data.dto.ScheduleResponseDto
@@ -26,6 +27,8 @@ class AudioRemoteDataSource @Inject constructor(
         if (response.isSuccessful) {
 
             scheduleDao.deleteAll()
+            Log.d("RawResponse", "Raw response: ${response.body()}")
+            Log.d("BaseResponseData", "Mapped data: ${response.body()?.data}")
             response.body()?.data?.hours?.map { it.toScheduleEntity() }?.let {
                 scheduleDao.saveAll(it)
             }

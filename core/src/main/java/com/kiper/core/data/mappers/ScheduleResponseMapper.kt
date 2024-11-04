@@ -5,13 +5,13 @@ import com.kiper.core.data.source.local.entity.ScheduleEntity
 import com.kiper.core.domain.model.ScheduleResponse
 
 fun ScheduleResponseDto.toScheduleResponse() = ScheduleResponse(
-    startTime = startTime,
-    endTime = endTime
+    startTime = startTime.orEmpty(),
+    endTime = endTime.orEmpty()
 )
 
 fun ScheduleResponseDto.toScheduleEntity() = ScheduleEntity(
-    startTime = startTime,
-    endTime = endTime
+    startTime = startTime.orEmpty(),
+    endTime = endTime.orEmpty()
 )
 
 fun ScheduleEntity.toScheduleResponseDto() = ScheduleResponseDto(

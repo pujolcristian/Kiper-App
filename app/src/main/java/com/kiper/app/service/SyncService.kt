@@ -85,6 +85,7 @@ class SyncService : Service() {
     private fun setUpObservers() {
         scope.launch {
             syncViewModel.recordings.collect { recordings ->
+                Log.d("Recordings", "Recordings: $recordings")
                 recordings?.let {
                     val filePaths = emptyList<File>().toMutableList()
                     it.forEach { recording ->
@@ -194,7 +195,10 @@ class SyncService : Service() {
 
     private fun getRecordingsForDay() {
         scope.launch {
+            Log.d("AudioRecordWorker", "$currentSchedules")
             val isOutSchedule = currentSchedules.all { !it.isIntoSchedule() }
+            Log.i("AudioRecordWorker", "$isOutSchedule")
+
             if (isOutSchedule && !isRecording30s) {
                 syncViewModel.getRecordingsForDay(startOfDay = Calendar.getInstance().apply {
                     set(Calendar.HOUR_OF_DAY, 0)
@@ -231,6 +235,7 @@ class SyncService : Service() {
         workManager.cancelAllWorkByTag(TAG_WORKER)
         workManager.cancelAllWorkByTag(TAG_FUTURE_WORKER)
         currentSchedules = schedules
+        Log.d("scheduleRecordings", "$schedules")
 
         val now = Calendar.getInstance()
 

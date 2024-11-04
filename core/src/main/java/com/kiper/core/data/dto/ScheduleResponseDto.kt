@@ -4,11 +4,12 @@ import com.google.gson.annotations.SerializedName
 
 data class SchedulesResponseDto(
     @SerializedName("hours")
-    val hours: List<ScheduleResponseDto>,
+    val hours: List<ScheduleResponseDto>? = null
 )
+
 data class ScheduleResponseDto(
     @SerializedName("startTime")
-    val startTime: String,
+    val startTime: String? = null,
     @SerializedName("endTime")
-    val endTime: String,
+    val endTime: String? = null
 )

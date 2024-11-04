@@ -1,5 +1,6 @@
 package com.kiper.app.service
 
+import android.util.Log
 import com.kiper.app.presentation.BaseViewModel
 import com.kiper.core.domain.model.AudioRecording
 import com.kiper.core.domain.model.ScheduleResponse
@@ -41,6 +42,7 @@ class SyncViewModel @Inject constructor(
     fun fetchDeviceSchedules(deviceId: String) = launch {
         execute {
             getDeviceSchedulesUseCase(deviceId).collectLatest {
+                Log.d("Schedules", "Schedules: $it")
                 _schedules.emit(it)
             }
         }
@@ -69,6 +71,7 @@ class SyncViewModel @Inject constructor(
     fun getRecordingsForDay(startOfDay: Long, endOfDay: Long) = launch {
         execute {
             val recordings = getRecordingsForDayUseCase(startOfDay, endOfDay)
+            Log.d("Recordings0", "Recordings: $recordings")
             _recordings.emit(recordings)
         }
     }

@@ -1,5 +1,6 @@
 package com.kiper.core.data.repository
 
+import android.util.Log
 import com.kiper.core.data.mappers.toAudioRecording
 import com.kiper.core.data.mappers.toAudioRecordingEntity
 import com.kiper.core.data.mappers.toScheduleResponse
@@ -19,6 +20,7 @@ class AudioRepositoryImpl @Inject constructor(
 
     override suspend fun getDeviceSchedules(deviceId: String): Flow<List<ScheduleResponse>?> {
         val response = audioRemoteDataSource.getDeviceSchedules(deviceId)
+        Log.d("Schedules0", "Schedules: $response")
         return response.map { it?.map { value -> value.toScheduleResponse() } }
     }
 
