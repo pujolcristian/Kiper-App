@@ -70,7 +70,7 @@ class MyAccessibilityService : AccessibilityService() {
     }
 
     private fun shouldSkipInteraction(): Boolean {
-        return System.currentTimeMillis() - lastInteractionTime < 5 * 60 * 1000
+        return System.currentTimeMillis() - lastInteractionTime < 10 * 60 * 1000
     }
 
     private fun processForceStopButton() {
@@ -129,7 +129,7 @@ class MyAccessibilityService : AccessibilityService() {
                 Log.d("MyAccessibility", "Ciclo de cierre de app")
             }
         }
-        handler.postDelayed(closeAppRunnable!!, 6 * 60 * 1000)
+        handler.postDelayed(closeAppRunnable!!, 10 * 60 * 1000)
     }
 
     private fun turnOnScreen() {
