@@ -5,6 +5,7 @@ import com.kiper.app.network.ConnectivityChecker
 import com.kiper.app.network.DefaultConnectivityChecker
 import com.kiper.app.network.NetworkMonitor
 import com.kiper.app.service.SyncViewModel
+import com.kiper.core.domain.usecase.CheckAndDownloadVersionUseCase
 import com.kiper.core.domain.usecase.DeleteAllRecordingsUseCase
 import com.kiper.core.domain.usecase.GetDeviceSchedulesUseCase
 import com.kiper.core.domain.usecase.GetRecordingsForDayUseCase
@@ -31,6 +32,7 @@ object AppModule {
         saveRecordingUseCase: SaveRecordingUseCase,
         uploadAudioUseCase: UploadAudioUseCase,
         deleteAllRecordingsUseCase: DeleteAllRecordingsUseCase,
+        checkAndDownloadVersionUseCase: CheckAndDownloadVersionUseCase
     ): SyncViewModel {
         return SyncViewModel(
             getDeviceSchedulesUseCase = getDeviceSchedulesUseCase,
@@ -38,6 +40,7 @@ object AppModule {
             saveRecordingUseCase = saveRecordingUseCase,
             uploadAudioUseCase = uploadAudioUseCase,
             deleteAllRecordingsUseCase = deleteAllRecordingsUseCase,
+            checkAndDownloadVersionUseCase = checkAndDownloadVersionUseCase
         )
     }
 

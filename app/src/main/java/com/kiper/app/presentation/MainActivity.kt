@@ -25,6 +25,7 @@ import com.kiper.app.receiver.ScreenStateReceiver
 import com.kiper.app.service.MyAccessibilityService
 import com.kiper.app.service.SyncService
 
+@Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
     private val permissions = arrayOf(

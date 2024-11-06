@@ -1,6 +1,7 @@
 package com.kiper.core.data
 
 import com.kiper.core.data.dto.SchedulesResponseDto
+import com.kiper.core.data.dto.UpdateDataResponseDto
 import com.kiper.core.data.dto.base.BaseResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -24,5 +25,7 @@ interface ApiService {
     ): Response<BaseResponse<String?>>
 
 
+    @GET("versionDevice")
+    suspend fun getVersionInfo(): Response<BaseResponse<UpdateDataResponseDto>>
 
 }

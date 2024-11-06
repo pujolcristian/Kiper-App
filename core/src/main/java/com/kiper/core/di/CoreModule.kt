@@ -5,12 +5,16 @@ import androidx.room.Room
 import androidx.work.WorkManager
 import com.kiper.core.data.ApiService
 import com.kiper.core.data.repository.AudioRepositoryImpl
+import com.kiper.core.data.repository.UpdateRepositoryImpl
+import com.kiper.core.data.source.local.AudioLocalDataSource
 import com.kiper.core.data.source.local.dao.AudioRecordingDao
 import com.kiper.core.data.source.local.dao.ScheduleDao
 import com.kiper.core.data.source.local.db.AppDatabase
-import com.kiper.core.data.source.local.AudioLocalDataSource
 import com.kiper.core.data.source.remote.AudioRemoteDataSource
+import com.kiper.core.data.source.remote.UpdateAppRemoteDataSource
 import com.kiper.core.domain.repository.AudioRepository
+import com.kiper.core.domain.repository.UpdateRepository
+import com.kiper.core.domain.usecase.CheckAndDownloadVersionUseCase
 import com.kiper.core.domain.usecase.DeleteAllRecordingsUseCase
 import com.kiper.core.domain.usecase.GetDeviceSchedulesUseCase
 import com.kiper.core.domain.usecase.GetRecordingsForDayUseCase
@@ -78,6 +82,23 @@ object CoreModule {
             scheduleDao = scheduleDao,
             localDataSource = localDataSource
         )
+    }
+
+    @Provides
+    @Singleton
+    fun provideUpdateAppRemoteDataSource(
+        apiService: ApiService,
+        context: Context,
+    ): UpdateAppRemoteDataSource {
+        return UpdateAppRemoteDataSource(apiService = apiService, context = context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideUpdateRepository(
+        updateAppRemoteDataSource: UpdateAppRemoteDataSource,
+    ): UpdateRepository {
+        return UpdateRepositoryImpl(updateAppRemoteDataSource = updateAppRemoteDataSource)
     }
 
     @Provides
@@ -156,6 +177,12 @@ object CoreModule {
     @Singleton
     fun provideDeleteRecordingUseCase(repository: AudioRepository): DeleteAllRecordingsUseCase {
         return DeleteAllRecordingsUseCase(repository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCheckAndDownloadUpdateUseCase(updateRepository: UpdateRepository): CheckAndDownloadVersionUseCase {
+        return CheckAndDownloadVersionUseCase(updateRepository = updateRepository)
     }
 
     @Provides

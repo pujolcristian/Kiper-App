@@ -57,7 +57,7 @@ class MyAccessibilityService : AccessibilityService() {
     }
 
     fun openAppInfo() {
-        Log.d("MyAccessibilityService", "try - Abriendo información de la app")
+        Log.d("MyAccessibilityService", "try - Abriendo información de la app ${shouldSkipInteraction()}")
         if (shouldSkipInteraction()) return
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
             data = Uri.parse("package:com.sprd.engineermode")

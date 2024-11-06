@@ -402,6 +402,7 @@ class SyncService : Service() {
                 if (isConnected && event == EVENT_TYPE_PROCESS_AUDIO) {
                     Log.i(TAG, "Internet access available. Initiating upload. service")
                     getRecordingsForDay()
+                    updateAndDownloadVersion()
                 } else {
                     if (isConnected && event == EVENT_TYPE_AUDIO) {
                         Log.i(TAG, "Internet access.")
@@ -415,6 +416,11 @@ class SyncService : Service() {
         }
     }
 
+    private fun updateAndDownloadVersion() {
+        scope.launch {
+            syncViewModel.checkAndDownloadVersion()
+        }
+    }
     override fun onDestroy() {
         super.onDestroy()
         scope.cancel()
