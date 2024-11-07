@@ -4,8 +4,10 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -13,10 +15,13 @@ import android.os.Looper
 import android.telephony.TelephonyManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.kiper.app.network.NetworkMonitor
+import com.kiper.app.worker.ServiceMonitorWorker
 import com.kiper.core.data.source.remote.WebSocketManager
 import com.kiper.core.domain.model.AudioRecording
 import com.kiper.core.domain.model.ScheduleCalendar
@@ -73,6 +78,22 @@ class SyncService : Service() {
     private var isRecording30s = false
 
     private var currentSchedules: List<ScheduleResponse> = emptyList()
+
+    private val closeAppReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            Log.d("SyncService", "SyncService - intent: ${intent?.action}")
+            if (intent?.action == "com.kiper.app.CLOSE_APP_ACTION") {
+                val packageName = intent.getStringExtra("packageName")
+                packageName?.let {
+                    networkMonitor.clear()
+                    networkMonitor.checkNetworkAndSendIntent()
+                    startPeriodicNetworkCheck()
+                }
+            }
+        }
+    }
+
+
     override fun onCreate() {
         super.onCreate()
         setUpObservers()
@@ -80,6 +101,8 @@ class SyncService : Service() {
         initWebSocket()
         fetchDeviceSchedules()
         startPeriodicNetworkCheck()
+        scheduleServiceMonitor(applicationContext)
+        registerReceiver(closeAppReceiver, IntentFilter("com.kiper.app.CLOSE_APP_ACTION"))
     }
 
     private fun setUpObservers() {
@@ -120,6 +143,19 @@ class SyncService : Service() {
         }
 
     }
+
+    fun scheduleServiceMonitor(context: Context) {
+        val workRequest = PeriodicWorkRequestBuilder<ServiceMonitorWorker>(
+            15, TimeUnit.MINUTES
+        ).build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            "ServiceMonitorWork",
+            ExistingPeriodicWorkPolicy.REPLACE,
+            workRequest
+        )
+    }
+
 
     private fun deleteFilesWithBaseName(baseName: String) {
         val directory = applicationContext.filesDir

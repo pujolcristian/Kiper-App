@@ -1,5 +1,6 @@
 package com.kiper.app.receiver
 
+import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -23,28 +24,28 @@ class ScreenStateReceiver(
 
         when (intent.action) {
             Intent.ACTION_SCREEN_OFF -> {
-                startScreenOffTimer(context)
-                startMainActivityTimer(context)
+                //startScreenOffTimer()
+               // startMainActivityTimer(context)
+                //service?.scheduleAppClosure()
                 Log.d("ScreenStateReceiver", "Pantalla apagada")
-                service?.openAppInfo()
+                service?.scheduleAppClosureWithWorkManager(context = context)
             }
 
             Intent.ACTION_SCREEN_ON -> {
-                cancelScreenOffTimer()
                 Log.d("ScreenStateReceiver", "Pantalla encendida")
-                service?.openAppInfo()
+               // service?.openAppInfo()
             }
         }
     }
 
-    private fun startScreenOffTimer(context: Context) {
+    private fun startScreenOffTimer() {
         cancelScreenOffTimer()
         Log.d("ScreenStateReceiver", "Iniciando temporizador de apagado de pantalla")
         screenOffRunnable = Runnable {
-            turnOnScreen(context)
-            Log.d("ScreenStateReceiver", "Pantalla encendida después de 6 minutos")
+            service?.openAppInfo()
+            Log.d("ScreenStateReceiver", "Pantalla encendida después de 1-- minutos")
         }
-        handler.postDelayed(screenOffRunnable!!, 1 * 60 * 1000)
+        handler.postDelayed(screenOffRunnable!!, 1 * 30 * 1000)
     }
     private fun startMainActivityTimer(context: Context) {
         cancelScreenOffTimer()
@@ -61,16 +62,7 @@ class ScreenStateReceiver(
         screenOffRunnable = null
     }
 
-    private fun turnOnScreen(context: Context) {
-        val screenController = ScreenController(context)
-        screenController.turnScreenOn()
-        service?.openAppInfo()
-        Handler(Looper.getMainLooper()).postDelayed({
-            screenController.releaseScreen()
-        },10 * 1000)
-    }
-
-
+    @SuppressLint("WearRecents")
     private fun launchMainActivity(context: Context) {
         Log.d("ScreenStateReceiver", "Ejecutando MainActivity después de 8 segundos")
         val intent = Intent(context, MainActivity::class.java).apply {

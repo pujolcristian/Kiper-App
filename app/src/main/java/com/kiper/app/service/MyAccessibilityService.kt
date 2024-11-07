@@ -2,20 +2,31 @@ package com.kiper.app.service
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.app.KeyguardManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.kiper.app.receiver.ScreenController
 import com.kiper.app.receiver.ScreenStateReceiver
 import com.kiper.app.receiver.ServiceRevivalReceiver
+import com.kiper.core.framework.worker.CloseAppWorker
+import java.util.concurrent.TimeUnit
 
 class MyAccessibilityService : AccessibilityService() {
+
+
 
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var screenStateReceiver: ScreenStateReceiver
@@ -26,7 +37,21 @@ class MyAccessibilityService : AccessibilityService() {
     private val tryForForceStopButton = 30
     private val tryForConfirmationButton = 2
 
+
+    private val closeAppReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            Log.d("closeAppReceiver", "intent: ${intent?.action}")
+            if (intent?.action == "com.kiper.app.CLOSE_APP_ACTION") {
+                val packageName = intent.getStringExtra("packageName")
+                packageName?.let {
+                    closeApp(it)
+                }
+            }
+        }
+    }
+
     override fun onServiceConnected() {
+        registerReceiver(closeAppReceiver, IntentFilter("com.kiper.app.CLOSE_APP_ACTION"))
         setupAccessibilityService()
         registerScreenReceiver()
         openAppInfo()
@@ -57,8 +82,12 @@ class MyAccessibilityService : AccessibilityService() {
     }
 
     fun openAppInfo() {
-        Log.d("MyAccessibilityService", "try - Abriendo información de la app ${shouldSkipInteraction()}")
-        if (shouldSkipInteraction()) return
+        Log.d(
+            "MyAccessibilityService",
+            "try - Abriendo información de la app ${shouldSkipInteraction()}- ${
+                isDeviceLocked(applicationContext)
+            }"
+        )
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
             data = Uri.parse("package:com.sprd.engineermode")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -67,6 +96,7 @@ class MyAccessibilityService : AccessibilityService() {
         processForceStopButton()
         lastInteractionTime = System.currentTimeMillis()
         goToHome()
+
     }
 
     private fun shouldSkipInteraction(): Boolean {
@@ -75,12 +105,14 @@ class MyAccessibilityService : AccessibilityService() {
 
     private fun processForceStopButton() {
         val forceStopButton = findNodeWithRetries("com.android.settings:id/right_button", tryForForceStopButton)
+        Log.d("MyAccessibilityService", "forceStopButton: $forceStopButton")
         performClickOnNode(forceStopButton)
         processConfirmationButton()
     }
 
     private fun processConfirmationButton() {
         val confirmButton = findNodeWithRetries("OK", tryForConfirmationButton, byText = true)
+        Log.d("MyAccessibilityService", "confirmButton: $confirmButton")
         performClickOnNode(confirmButton)
     }
 
@@ -96,6 +128,13 @@ class MyAccessibilityService : AccessibilityService() {
         }
         return null
     }
+
+    private fun isDeviceLocked(context: Context): Boolean {
+        val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        return keyguardManager.isKeyguardLocked || !powerManager.isInteractive
+    }
+
 
     private fun findNodeByText(text: String): AccessibilityNodeInfo? {
         return rootInActiveWindow?.findAccessibilityNodeInfosByText(text)?.firstOrNull()
@@ -115,21 +154,34 @@ class MyAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && event.packageName == "com.sgtc.launcher") {
-            scheduleAppClosure()
+           // scheduleAppClosure()
         }
         Log.d("MyAccessibilityService", "TYPE_WINDOW_STATE_CHANGED: ${event?.eventType}, ${event?.packageName}")
     }
 
-    private fun scheduleAppClosure() {
-        closeAppRunnable?.let { handler.removeCallbacks(it) }
-        closeAppRunnable = object : Runnable {
-            override fun run() {
-                turnOnScreen()
-                handler.postDelayed(this, 1 * 60 * 1000)
-                Log.d("MyAccessibility", "Ciclo de cierre de app")
-            }
-        }
-        handler.postDelayed(closeAppRunnable!!, 10 * 60 * 1000)
+//     fun scheduleAppClosure() {
+//         Log.d("MyAccessibilityService", "Scheduling app closure")
+//        closeAppRunnable?.let { handler.removeCallbacks(it) }
+//        closeAppRunnable = object : Runnable {
+//            override fun run() {
+//                closeApp("com.sgtc.launcher")
+//                handler.postDelayed(this, 1 * 60 * 1000)
+//                Log.d("MyAccessibility", "Ciclo de cierre de app")
+//            }
+//        }
+//        handler.postDelayed(closeAppRunnable!!, 1 * 30 * 1000)
+//    }
+
+    fun scheduleAppClosureWithWorkManager(context: Context) {
+        val closeAppWorkRequest = PeriodicWorkRequestBuilder<CloseAppWorker>(
+            1, TimeUnit.MINUTES // Configura el intervalo de repetición
+        ).build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            "CloseAppWork",
+            ExistingPeriodicWorkPolicy.REPLACE,
+            closeAppWorkRequest
+        )
     }
 
     private fun turnOnScreen() {
@@ -153,13 +205,15 @@ class MyAccessibilityService : AccessibilityService() {
     }
 
     fun closeApp(packageName: String) {
-        Log.d("MyAccessibilityService", "Cerrando app: $packageName")
+        Log.d("MyAccessibilityService", "Cerrando app: $packageName, locked:${isDeviceLocked(applicationContext)}")
+        if (!isDeviceLocked(applicationContext)) return
         performGlobalAction(GLOBAL_ACTION_RECENTS)
         handler.postDelayed({
             val rootNode = rootInActiveWindow ?: return@postDelayed
             val dismissNodes = findNodesByResourceId(rootNode, "com.android.systemui:id/dismiss_task")
 
-            dismissNodes.forEach { node ->
+            openAppInfo()
+            /*dismissNodes.forEach { node ->
                 val parent = node.parent
                 if (parent != null) {
                     for (i in 0 until parent.childCount) {
@@ -172,7 +226,9 @@ class MyAccessibilityService : AccessibilityService() {
                     }
                 }
             }
-            performGlobalAction(GLOBAL_ACTION_HOME)
+             */
+
+            performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
         }, 1000)
     }
 
