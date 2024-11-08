@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
@@ -130,17 +131,26 @@ class MainActivity : AppCompatActivity() {
                         requestDeviceAdminPermission()
                     }
                 }
-                if (!isAccessibilityServiceEnabled(
-                        this,
-                        MyAccessibilityService::class.java
-                    ) && shouldRequestAccessibilityPermission()
-                ) {
-                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                    startActivity(intent)
-                    saveCurrentTime()
+                if (!this@MainActivity.packageManager.canRequestPackageInstalls()) {
+                    val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                        data = Uri.parse("package:${this@MainActivity.packageName}")
+                    }
+                    this@MainActivity.startActivityForResult(
+                        intent,
+                        REQUEST_UNKNOWN_SOURCES_PERMISSION_CODE
+                    )
                 } else {
-                    println("isDeviceLocked3: ${isDeviceLocked(this)}")
-                    openPreviousLauncher()
+                    if (!isAccessibilityServiceEnabled(
+                            this,
+                            MyAccessibilityService::class.java
+                        )
+                    ) {
+                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        startActivity(intent)
+                        saveCurrentTime()
+                    } else {
+                        openPreviousLauncher()
+                    }
                 }
             } else {
                 Toast.makeText(this, "Permisos necesarios no otorgados", Toast.LENGTH_SHORT).show()
@@ -211,7 +221,6 @@ class MainActivity : AppCompatActivity() {
                 showSetDefaultLauncherDialog()
             } else {
                 Log.d("MainActivity", "isDeviceLocked: \${isDeviceLocked(this)}")
-//                setWhileCloseLauncher()
                 if (!devicePolicyManager.isAdminActive(adminComponent)) {
                     requestDeviceAdminPermission()
                 } else {
@@ -221,15 +230,26 @@ class MainActivity : AppCompatActivity() {
                         addAction(Intent.ACTION_SCREEN_ON)
                     }
                     registerReceiver(screenStateReceiver, filter)
-
-                    if (!isAccessibilityServiceEnabled(
-                            this,
-                            MyAccessibilityService::class.java)) {
-                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                        startActivity(intent)
-                        saveCurrentTime()
+                    if (!this@MainActivity.packageManager.canRequestPackageInstalls()) {
+                        val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                            data = Uri.parse("package:${this@MainActivity.packageName}")
+                        }
+                        this@MainActivity.startActivityForResult(
+                            intent,
+                            REQUEST_UNKNOWN_SOURCES_PERMISSION_CODE
+                        )
                     } else {
-                        openPreviousLauncher()
+                        if (!isAccessibilityServiceEnabled(
+                                this,
+                                MyAccessibilityService::class.java
+                            )
+                        ) {
+                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                            startActivity(intent)
+                            saveCurrentTime()
+                        } else {
+                            openPreviousLauncher()
+                        }
                     }
                 }
             }
@@ -237,6 +257,8 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE_PERMISSIONS)
         }
     }
+
+
 
 //    private fun setWhileCloseLauncher() {
 //        CoroutineScope(Dispatchers.IO).launch {
@@ -288,5 +310,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val REQUEST_CODE_ENABLE_ADMIN = 11
         private const val REQUEST_CODE_PERMISSIONS = 10
+        private const val REQUEST_UNKNOWN_SOURCES_PERMISSION_CODE = 12
     }
 }

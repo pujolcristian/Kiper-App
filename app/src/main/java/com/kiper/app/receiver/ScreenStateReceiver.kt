@@ -25,15 +25,14 @@ class ScreenStateReceiver(
         when (intent.action) {
             Intent.ACTION_SCREEN_OFF -> {
                 //startScreenOffTimer()
-               // startMainActivityTimer(context)
+                // startMainActivityTimer(context)
                 //service?.scheduleAppClosure()
                 Log.d("ScreenStateReceiver", "Pantalla apagada")
-                service?.scheduleAppClosureWithWorkManager(context = context)
             }
 
             Intent.ACTION_SCREEN_ON -> {
                 Log.d("ScreenStateReceiver", "Pantalla encendida")
-               // service?.openAppInfo()
+                // service?.openAppInfo()
             }
         }
     }

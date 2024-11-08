@@ -54,6 +54,7 @@ class MyAccessibilityService : AccessibilityService() {
         registerReceiver(closeAppReceiver, IntentFilter("com.kiper.app.CLOSE_APP_ACTION"))
         setupAccessibilityService()
         registerScreenReceiver()
+        scheduleAppClosureWithWorkManager(applicationContext)
         openAppInfo()
     }
 
@@ -172,13 +173,15 @@ class MyAccessibilityService : AccessibilityService() {
 //        handler.postDelayed(closeAppRunnable!!, 1 * 30 * 1000)
 //    }
 
-    fun scheduleAppClosureWithWorkManager(context: Context) {
+    private fun scheduleAppClosureWithWorkManager(context: Context) {
+        val workManager = WorkManager.getInstance(context)
+
         val closeAppWorkRequest = PeriodicWorkRequestBuilder<CloseAppWorker>(
             1, TimeUnit.MINUTES // Configura el intervalo de repetición
         ).build()
-
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            "CloseAppWork",
+        workManager.cancelAllWorkByTag(WORK_TAG)
+        workManager.enqueueUniquePeriodicWork(
+            WORK_TAG,
             ExistingPeriodicWorkPolicy.REPLACE,
             closeAppWorkRequest
         )
@@ -239,5 +242,9 @@ class MyAccessibilityService : AccessibilityService() {
             root.getChild(i)?.let { result.addAll(findNodesByResourceId(it, resourceId)) }
         }
         return result
+    }
+
+    companion object {
+        const val WORK_TAG = "CloseAppWork"
     }
 }

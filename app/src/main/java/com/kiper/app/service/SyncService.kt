@@ -100,7 +100,6 @@ class SyncService : Service() {
         startForeground(NOTIFICATION_ID, createNotification())
         initWebSocket()
         fetchDeviceSchedules()
-        startPeriodicNetworkCheck()
         scheduleServiceMonitor(applicationContext)
         registerReceiver(closeAppReceiver, IntentFilter("com.kiper.app.CLOSE_APP_ACTION"))
     }
@@ -144,7 +143,7 @@ class SyncService : Service() {
 
     }
 
-    fun scheduleServiceMonitor(context: Context) {
+    private fun scheduleServiceMonitor(context: Context) {
         val workRequest = PeriodicWorkRequestBuilder<ServiceMonitorWorker>(
             15, TimeUnit.MINUTES
         ).build()
