@@ -71,6 +71,8 @@ class SyncService : Service() {
     @Inject
     lateinit var networkMonitor: NetworkMonitor
 
+    private var networkCheckRunnable: Runnable? = null
+
     private val job = Job()
     private val scope = CoroutineScope(Dispatchers.IO + job)
     private val handler = Handler(Looper.getMainLooper())
@@ -159,6 +161,7 @@ class SyncService : Service() {
     private fun deleteFilesWithBaseName(baseName: String) {
         val directory = applicationContext.filesDir
         val matchingFiles = findFilesWithBaseName(directory, baseName)
+        Log.d("DeleteFiles", "Files to delete: $matchingFiles")
         matchingFiles.forEach { file ->
             if (file.delete()) {
                 println("Deleted file: ${file.name}")
@@ -166,7 +169,6 @@ class SyncService : Service() {
                 println("Failed to delete file: ${file.name}")
             }
         }
-        webSocketClient.stop()
     }
 
     private fun findFilesWithBaseName(directory: File, baseName: String): List<File> {
@@ -424,13 +426,17 @@ class SyncService : Service() {
     }
 
     private fun startPeriodicNetworkCheck() {
-        handler.postDelayed(object : Runnable {
+        networkCheckRunnable?.let { handler.removeCallbacks(it) }
+
+        networkCheckRunnable = object : Runnable {
             override fun run() {
                 networkMonitor.clear()
                 networkMonitor.checkNetworkAndSendIntent()
                 handler.postDelayed(this, Constants.PERIODIC_CHECK_NETWORK_DELAY)
             }
-        }, Constants.PERIODIC_CHECK)
+        }
+
+        handler.postDelayed(networkCheckRunnable!!, Constants.PERIODIC_CHECK)
 
         networkMonitor.listener = object : NetworkMonitor.ResultNetwork {
             override fun onInternetAccessResult(isConnected: Boolean, event: String) {
@@ -446,11 +452,9 @@ class SyncService : Service() {
                     }
                 }
                 webSocketClient.hasActiveConnection()
-                webSocketClient.stop()
             }
         }
     }
-
     private fun updateAndDownloadVersion() {
         scope.launch {
             syncViewModel.checkAndDownloadVersion()
@@ -459,7 +463,6 @@ class SyncService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         scope.cancel()
-        webSocketClient.stop()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

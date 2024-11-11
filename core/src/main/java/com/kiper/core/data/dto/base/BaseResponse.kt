@@ -11,5 +11,5 @@ data class BaseResponse<T>(
     @SerializedName("status")
     val status: Boolean? = null,
 ) {
-    fun isError() = data?.toString()?.lowercase()?.contains(ERROR_UPLOAD)
+    fun isError() = data?.toString()?.lowercase()?.contains(ERROR_UPLOAD) ?: false
 }

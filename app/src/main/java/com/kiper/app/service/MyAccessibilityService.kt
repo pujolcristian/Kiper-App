@@ -31,7 +31,6 @@ class MyAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var screenStateReceiver: ScreenStateReceiver
     private lateinit var serviceRevivalReceiver: ServiceRevivalReceiver
-    private var closeAppRunnable: Runnable? = null
     private var lastInteractionTime = 0L
 
     private val tryForForceStopButton = 30
@@ -177,7 +176,7 @@ class MyAccessibilityService : AccessibilityService() {
         val workManager = WorkManager.getInstance(context)
 
         val closeAppWorkRequest = PeriodicWorkRequestBuilder<CloseAppWorker>(
-            1, TimeUnit.MINUTES // Configura el intervalo de repetición
+            15, TimeUnit.MINUTES // Configura el intervalo de repetición
         ).build()
         workManager.cancelAllWorkByTag(WORK_TAG)
         workManager.enqueueUniquePeriodicWork(

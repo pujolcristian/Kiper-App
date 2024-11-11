@@ -8,6 +8,7 @@ import com.kiper.core.data.mappers.toScheduleEntity
 import com.kiper.core.data.mappers.toScheduleResponseDto
 import com.kiper.core.data.source.local.AudioLocalDataSource
 import com.kiper.core.data.source.local.dao.ScheduleDao
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -25,14 +26,12 @@ class AudioRemoteDataSource @Inject constructor(
     suspend fun getDeviceSchedules(deviceId: String): Flow<List<ScheduleResponseDto>?> {
         val response = apiService.getSchedule(deviceId)
         if (response.isSuccessful) {
-
             scheduleDao.deleteAll()
             Log.d("RawResponse", "Raw response: ${response.body()}")
             Log.d("BaseResponseData", "Mapped data: ${response.body()?.data}")
             response.body()?.data?.hours?.map { it.toScheduleEntity() }?.let {
                 scheduleDao.saveAll(it)
             }
-
             return flow { emit(response.body()?.data?.hours) }
         } else {
             return scheduleDao.getAll().map { data -> data.map { it.toScheduleResponseDto() } }
@@ -47,11 +46,26 @@ class AudioRemoteDataSource @Inject constructor(
         val event = eventType.toRequestBody("text/plain".toMediaTypeOrNull())
         val deviceIdBody = deviceId.toRequestBody("text/plain".toMediaTypeOrNull())
 
-        val response = apiService.uploadAudio(data = body, event = event, deviceId = deviceIdBody)
-        val result = response.isSuccessful && response.body()?.isError() == false
-        if (result) {
-            localDataSource.deleteRecordingUploaded(file.name)
+        val maxRetries = 3
+        var currentAttempt = 0
+
+        while (currentAttempt < maxRetries) {
+            currentAttempt++
+            val response = apiService.uploadAudio(data = body, event = event, deviceId = deviceIdBody)
+            val result = response.isSuccessful && response.body()?.isError() == false
+
+            if (result) {
+                localDataSource.deleteRecordingUploaded(file.name)
+                return true
+            } else {
+                Log.e("AudioUpload", "Attempt $currentAttempt failed, retrying...")
+                if (currentAttempt < maxRetries) {
+                    delay(2000)
+                }
+            }
         }
-        return result
+
+        Log.e("AudioUpload", "Failed after $maxRetries attempts.")
+        return false
     }
 }
