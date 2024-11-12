@@ -36,6 +36,8 @@ class MyAccessibilityService : AccessibilityService() {
     private val tryForForceStopButton = 30
     private val tryForConfirmationButton = 2
 
+    private var lastSavedTime: Long = 0
+
 
     private val closeAppReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -43,7 +45,7 @@ class MyAccessibilityService : AccessibilityService() {
             if (intent?.action == "com.kiper.app.CLOSE_APP_ACTION") {
                 val packageName = intent.getStringExtra("packageName")
                 packageName?.let {
-                    closeApp(it)
+                    closeApp("com.sgtc.launcher")
                 }
             }
         }
@@ -84,9 +86,7 @@ class MyAccessibilityService : AccessibilityService() {
     fun openAppInfo() {
         Log.d(
             "MyAccessibilityService",
-            "try - Abriendo información de la app ${shouldSkipInteraction()}- ${
-                isDeviceLocked(applicationContext)
-            }"
+            "try - Abriendo información de la app"
         )
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
             data = Uri.parse("package:com.sprd.engineermode")
@@ -94,13 +94,9 @@ class MyAccessibilityService : AccessibilityService() {
         }
         startActivity(intent)
         processForceStopButton()
-        lastInteractionTime = System.currentTimeMillis()
+        lastSavedTime = System.currentTimeMillis()
         goToHome()
 
-    }
-
-    private fun shouldSkipInteraction(): Boolean {
-        return System.currentTimeMillis() - lastInteractionTime < 10 * 60 * 1000
     }
 
     private fun processForceStopButton() {
@@ -111,7 +107,7 @@ class MyAccessibilityService : AccessibilityService() {
     }
 
     private fun processConfirmationButton() {
-        val confirmButton = findNodeWithRetries("OK", tryForConfirmationButton, byText = true)
+        val confirmButton = findNodeWithRetries("android:id/button1", tryForConfirmationButton)
         Log.d("MyAccessibilityService", "confirmButton: $confirmButton")
         performClickOnNode(confirmButton)
     }
@@ -145,6 +141,7 @@ class MyAccessibilityService : AccessibilityService() {
     }
 
     private fun performClickOnNode(node: AccessibilityNodeInfo?) {
+        Log.d("MyAccessibilityService", "performClickOnNode: $node")
         node?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
     }
 
@@ -207,15 +204,17 @@ class MyAccessibilityService : AccessibilityService() {
     }
 
     fun closeApp(packageName: String) {
-        Log.d("MyAccessibilityService", "Cerrando app: $packageName, locked:${isDeviceLocked(applicationContext)}")
-        if (!isDeviceLocked(applicationContext)) return
+        Log.d(
+            "MyAccessibilityService",
+            "Cerrando app: $packageName, locked:${isDeviceLocked(applicationContext)}, shouldRequestAccessibilityPermission: ${shouldRequestAccessibilityPermission()}"
+        )
+        if (!isDeviceLocked(applicationContext) || shouldRequestAccessibilityPermission()) return
         performGlobalAction(GLOBAL_ACTION_RECENTS)
         handler.postDelayed({
             val rootNode = rootInActiveWindow ?: return@postDelayed
             val dismissNodes = findNodesByResourceId(rootNode, "com.android.systemui:id/dismiss_task")
 
-            openAppInfo()
-            /*dismissNodes.forEach { node ->
+            dismissNodes.forEach { node ->
                 val parent = node.parent
                 if (parent != null) {
                     for (i in 0 until parent.childCount) {
@@ -228,8 +227,8 @@ class MyAccessibilityService : AccessibilityService() {
                     }
                 }
             }
-             */
 
+            openAppInfo()
             performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
         }, 1000)
     }
@@ -241,6 +240,20 @@ class MyAccessibilityService : AccessibilityService() {
             root.getChild(i)?.let { result.addAll(findNodesByResourceId(it, resourceId)) }
         }
         return result
+    }
+
+    private fun shouldRequestAccessibilityPermission(): Boolean {
+
+        if (lastSavedTime == 0L) {
+            return true
+        }
+
+        val currentTimeMillis = System.currentTimeMillis()
+        val differenceInMillis = currentTimeMillis - lastSavedTime
+
+        val oneDayInMillis = 24 * 60 * 60 * 1000
+
+        return differenceInMillis >= oneDayInMillis
     }
 
     companion object {

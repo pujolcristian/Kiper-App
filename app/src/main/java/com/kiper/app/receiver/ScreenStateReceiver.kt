@@ -26,13 +26,12 @@ class ScreenStateReceiver(
             Intent.ACTION_SCREEN_OFF -> {
                 //startScreenOffTimer()
                 // startMainActivityTimer(context)
-                //service?.scheduleAppClosure()
                 Log.d("ScreenStateReceiver", "Pantalla apagada")
             }
 
             Intent.ACTION_SCREEN_ON -> {
                 Log.d("ScreenStateReceiver", "Pantalla encendida")
-                // service?.openAppInfo()
+                service?.closeApp("com.sgtc.launcher")
             }
         }
     }
