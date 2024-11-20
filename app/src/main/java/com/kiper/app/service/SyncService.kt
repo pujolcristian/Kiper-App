@@ -178,6 +178,7 @@ class SyncService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d("onStartCommand", "Intent: $intent, flags: $flags, startId: $startId")
         return START_STICKY
     }
 

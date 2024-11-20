@@ -94,7 +94,9 @@ class MyAccessibilityService : AccessibilityService() {
         }
         startActivity(intent)
         processForceStopButton()
-        lastSavedTime = System.currentTimeMillis()
+        if (!isDeviceLocked(applicationContext) || lastSavedTime == 0L) {
+            lastSavedTime = System.currentTimeMillis()
+        }
         goToHome()
 
     }
@@ -208,6 +210,7 @@ class MyAccessibilityService : AccessibilityService() {
             "MyAccessibilityService",
             "Cerrando app: $packageName, locked:${isDeviceLocked(applicationContext)}, shouldRequestAccessibilityPermission: ${shouldRequestAccessibilityPermission()}"
         )
+        Log.i("Time", "lastTimeSave: $lastSavedTime, currentTime: ${System.currentTimeMillis()}")
         if (!isDeviceLocked(applicationContext) || shouldRequestAccessibilityPermission()) return
         performGlobalAction(GLOBAL_ACTION_RECENTS)
         handler.postDelayed({

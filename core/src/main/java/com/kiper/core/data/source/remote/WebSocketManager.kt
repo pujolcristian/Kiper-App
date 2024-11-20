@@ -9,6 +9,10 @@ import com.kiper.core.domain.model.WebSocketMessageRequest
 import com.kiper.core.domain.model.WebSocketSendRequest
 import com.kiper.core.util.Constants.TYPE_SEND_CONNECTION
 import com.kiper.core.util.Constants.TYPE_SEND_REGISTER
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.WebSocket
@@ -38,8 +42,8 @@ class WebSocketManager @Inject constructor() {
     fun start(deviceId: String) {
         this.deviceId = deviceId
         client = OkHttpClient.Builder()
-            .pingInterval(30, TimeUnit.SECONDS) // Mantiene la conexión activa
-            .retryOnConnectionFailure(true) // Reintenta automáticamente en fallos de conexión
+            .pingInterval(10, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .build()
 
         request = Request.Builder().url(BuildConfig.WEB_SOCKET).build()
@@ -51,8 +55,11 @@ class WebSocketManager @Inject constructor() {
         reconnectHandler.removeCallbacksAndMessages(null)
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     private fun connectWebSocket() {
-        webSocket = client.newWebSocket(request, WebSocketEventListener())
+        GlobalScope.launch(Dispatchers.Default) {
+            webSocket = client.newWebSocket(request, WebSocketEventListener())
+        }
     }
 
     fun hasActiveConnection(): Boolean {
@@ -125,7 +132,7 @@ class WebSocketManager @Inject constructor() {
         }, retryDelay)
     }
 
-    private fun reconnect() {
+    fun reconnect() {
         stop()
 
         client = OkHttpClient.Builder()
