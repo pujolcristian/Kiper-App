@@ -179,6 +179,8 @@ class SyncService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("onStartCommand", "Intent: $intent, flags: $flags, startId: $startId")
+        networkMonitor.clear()
+        networkMonitor.checkNetworkAndSendIntent()
         return START_STICKY
     }
 
