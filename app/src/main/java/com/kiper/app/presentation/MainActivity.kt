@@ -140,17 +140,7 @@ class MainActivity : AppCompatActivity() {
                         REQUEST_UNKNOWN_SOURCES_PERMISSION_CODE
                     )
                 } else {
-                    if (!isAccessibilityServiceEnabled(
-                            this,
-                            MyAccessibilityService::class.java
-                        )
-                    ) {
-                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                        startActivity(intent)
-                        saveCurrentTime()
-                    } else {
-                        openPreviousLauncher()
-                    }
+                    openPreviousLauncher()
                 }
             } else {
                 Toast.makeText(this, "Permisos necesarios no otorgados", Toast.LENGTH_SHORT).show()
@@ -239,17 +229,7 @@ class MainActivity : AppCompatActivity() {
                             REQUEST_UNKNOWN_SOURCES_PERMISSION_CODE
                         )
                     } else {
-                        if (!isAccessibilityServiceEnabled(
-                                this,
-                                MyAccessibilityService::class.java
-                            )
-                        ) {
-                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                            startActivity(intent)
-                            saveCurrentTime()
-                        } else {
-                            openPreviousLauncher()
-                        }
+                        openPreviousLauncher()
                     }
                 }
             }
@@ -257,7 +237,6 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE_PERMISSIONS)
         }
     }
-
 
 
 //    private fun setWhileCloseLauncher() {

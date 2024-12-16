@@ -87,7 +87,7 @@ class MyAccessibilityService : AccessibilityService() {
             "try - Abriendo información de la app"
         )
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-            // data = Uri.parse("package:com.sprd.engineermode")
+           // data = Uri.parse("package:com.sprd.engineermode")
             data = Uri.parse("package:com.sprd.engineermode")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
