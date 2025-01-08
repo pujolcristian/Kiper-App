@@ -22,6 +22,10 @@ class ServiceMonitorWorker(
             applicationContext.startService(serviceIntent)
         } else {
             Log.d("ServiceMonitorWorker", "El servicio ya está activo.")
+            val intent = Intent("com.kiper.app.CLOSE_APP_ACTION").apply {
+                putExtra("packageName", "com.sgtc.launcher")
+            }
+            applicationContext.sendBroadcast(intent)
         }
         
         return Result.success()
