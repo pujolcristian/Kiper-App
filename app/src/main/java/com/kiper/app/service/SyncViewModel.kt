@@ -80,7 +80,7 @@ class SyncViewModel @Inject constructor(
     fun getRecordingsForDay(startOfDay: Long, endOfDay: Long) = launch {
         execute {
             val recordings = getRecordingsForDayUseCase(startOfDay, endOfDay)
-            Log.d("Recordings0", "Recordings: $recordings")
+            Log.d("RecordingsForDay", "Recordings: $recordings")
             _recordings.emit(recordings)
         }
     }

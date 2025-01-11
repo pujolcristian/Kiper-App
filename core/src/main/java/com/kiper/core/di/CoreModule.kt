@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.work.WorkManager
 import com.kiper.core.data.ApiService
+import com.kiper.core.data.ConditionalLoggingInterceptor
 import com.kiper.core.data.repository.AudioRepositoryImpl
 import com.kiper.core.data.repository.UpdateRepositoryImpl
 import com.kiper.core.data.source.local.AudioLocalDataSource
@@ -43,9 +44,10 @@ object CoreModule {
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
         val logging = HttpLoggingInterceptor()
-        logging.setLevel(HttpLoggingInterceptor.Level.BODY)
+        logging.setLevel(HttpLoggingInterceptor.Level.HEADERS)
 
         return OkHttpClient.Builder()
+            .addInterceptor(ConditionalLoggingInterceptor())
             .addInterceptor(logging)
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)

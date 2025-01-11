@@ -235,9 +235,9 @@ class SyncService : Service() {
 
     private fun getRecordingsForDay() {
         scope.launch {
-            Log.d("AudioRecordWorker", "$currentSchedules")
+            Log.i("getRecordingsForDay", "current: $currentSchedules")
             val isOutSchedule = currentSchedules.all { !it.isIntoSchedule() }
-            Log.i("AudioRecordWorker", "$isOutSchedule")
+            Log.i("getRecordingsForDay", "isOutSchedule: $isOutSchedule")
 
             if (isOutSchedule && !isRecording30s) {
                 syncViewModel.getRecordingsForDay(startOfDay = Calendar.getInstance().apply {

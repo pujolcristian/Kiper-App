@@ -39,6 +39,7 @@ class AndroidAudioRecorder @Inject constructor(
             e.printStackTrace()
             recorder?.release()
             recorder = null
+            isRecording = false
         }
     }
 
