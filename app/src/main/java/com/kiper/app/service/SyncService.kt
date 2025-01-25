@@ -29,7 +29,7 @@ import com.kiper.core.domain.model.ScheduleResponse
 import com.kiper.core.domain.model.WebSocketEventResponse
 import com.kiper.core.domain.model.isAfterScheduleToday
 import com.kiper.core.domain.model.isIntoSchedule
-import com.kiper.core.framework.worker.AudioRecordWorker
+import com.kiper.core.framework.worker.AudioRecordingWorker
 import com.kiper.core.util.Constants
 import com.kiper.core.util.Constants.CHANNEL_ID
 import com.kiper.core.util.Constants.EVENT_TYPE_AUDIO
@@ -385,14 +385,19 @@ class SyncService : Service() {
         tagWorker: String,
         eventType: String,
     ) {
-
         val baseName = "${getDeviceId()}_${schedule.startTime}_${schedule.endTime}"
         val data = workDataOf(
-            "recordingName" to baseName, "duration" to duration, "eventType" to eventType
+            "recordingName" to baseName,
+            "duration" to duration,
+            "remainingDuration" to duration,
+            "eventType" to eventType
         )
-        val workRequest = OneTimeWorkRequestBuilder<AudioRecordWorker>().setInitialDelay(
-            delay, TimeUnit.MILLISECONDS
-        ).setInputData(data).addTag(tagWorker).build()
+
+        val workRequest = OneTimeWorkRequestBuilder<AudioRecordingWorker>()
+            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+            .setInputData(data)
+            .addTag(tagWorker)
+            .build()
 
         syncViewModel.saveRecording(
             AudioRecording(

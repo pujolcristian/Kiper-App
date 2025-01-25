@@ -2,25 +2,26 @@ package com.kiper.core.framework.worker
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.provider.Settings
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.kiper.core.domain.model.isIntoSchedule
 import com.kiper.core.framework.audioRecorder.AndroidAudioRecorder
+import com.kiper.core.framework.service.AudioRecordingService
 import com.kiper.core.util.Constants.EVENT_TYPE_AUDIO
 import com.kiper.core.util.generateFileName
 import com.kiper.core.util.getRemainingDurationFromNameFile
 import com.kiper.core.util.getScheduledFromNameFile
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class AudioRecordWorker(
+class AudioRecordingWorker(
     context: Context,
     params: WorkerParameters,
 ) : CoroutineWorker(context, params) {
@@ -57,16 +58,30 @@ class AudioRecordWorker(
                 return@withContext Result.failure()
             }
 
+            if (eventType == EVENT_TYPE_AUDIO) {
+                val interruptIntent =
+                    Intent(applicationContext, AudioRecordingService::class.java).apply {
+                        action = AudioRecordingService.ACTION_RECORD_30_SECONDS
+                        putExtra("recordingName", name)
+                        putExtra("remainingDuration", duration)
+                    }
 
-            startRecording(file.absolutePath)
-            isRecording = true
-            delay(if (eventType != EVENT_TYPE_AUDIO) remainingDuration else duration)
-            stopRecording()
-            isRecording = false
+                applicationContext.startService(interruptIntent)
+            } else {
+                // Start the AudioRecordingService
+                val intent = Intent(applicationContext, AudioRecordingService::class.java).apply {
+                    action = AudioRecordingService.ACTION_START_RECORDING
+                    putExtra("recordingName", name)
+                    putExtra("remainingDuration", duration)
+                }
+
+                applicationContext.startForegroundService(intent)
+
+            }
+
             Result.success()
         } catch (e: Exception) {
             Log.e("AudioRecordWorker", "Recording failed", e)
-            stopRecording()
             isRecording = false
             Result.retry()
         }
@@ -81,17 +96,6 @@ class AudioRecordWorker(
         val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
         val date = dateFormat.format(Date())
         return "audio_${deviceId}_${date}.3gp"
-    }
-
-
-    private fun startRecording(filePath: String) {
-        recorder.start(File(filePath))
-        Log.i("AudioRecordWorker", "Started recording to $filePath")
-    }
-
-    private fun stopRecording() {
-        recorder.stop()
-        Log.i("AudioRecordWorker", "Stopped recording")
     }
 
 }

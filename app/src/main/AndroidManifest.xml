@@ -94,6 +94,14 @@
             android:foregroundServiceType="mediaPlayback" />
 
         <service
+            android:name="com.kiper.core.framework.service.AudioRecordingService"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.RECORD_AUDIO"
+            android:process=":hiddenprocess"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <service
             android:name=".service.RestartJobService"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
