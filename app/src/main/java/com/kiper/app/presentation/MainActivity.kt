@@ -1,20 +1,24 @@
 package com.kiper.app.presentation
 
 import android.Manifest
-import android.accessibilityservice.AccessibilityService
-import android.app.KeyguardManager
+import android.app.Dialog
 import android.app.admin.DevicePolicyManager
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
-import android.os.PowerManager
 import android.provider.Settings
-import android.text.TextUtils
 import android.util.Log
+import android.view.ViewGroup
+import android.view.Window
+import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -23,7 +27,6 @@ import androidx.core.content.ContextCompat
 import com.kiper.app.R
 import com.kiper.app.receiver.MyDeviceAdminReceiver
 import com.kiper.app.receiver.ScreenStateReceiver
-import com.kiper.app.service.MyAccessibilityService
 import com.kiper.app.service.SyncService
 
 @Suppress("DEPRECATION")
@@ -42,12 +45,22 @@ class MainActivity : AppCompatActivity() {
     private lateinit var devicePolicyManager: DevicePolicyManager
     private lateinit var adminComponent: ComponentName
 
-    private var lastScreenOnTime: Int = 0
+    private var isShowingDialog = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_activity)
         Log.d("MainActivity", "onCreate")
+
+        // Register the broadcast receiver
+        val registerFilter = IntentFilter("com.kiper.app.SHOW_CUSTOM_DIALOG")
+        registerReceiver(webSocketReceiver, registerFilter)
+
+        if (intent?.getBooleanExtra("showDialog", false) == true) {
+            val message = intent.getStringExtra("message") ?: ""
+            showCustomDialog(message = message)
+            isShowingDialog = true
+        }
 
         devicePolicyManager = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         adminComponent = ComponentName(this, MyDeviceAdminReceiver::class.java)
@@ -61,7 +74,6 @@ class MainActivity : AppCompatActivity() {
                 addAction(Intent.ACTION_SCREEN_ON)
             }
             registerReceiver(screenStateReceiver, filter)
-            //devicePolicyManager.lockNow()
         }
     }
 
@@ -106,13 +118,8 @@ class MainActivity : AppCompatActivity() {
             component = ComponentName("com.sgtc.launcher", "com.sgtc.launcher.Launcher")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        if (lastScreenOnTime == 0) {
-            Thread.sleep(3000)
-            lastScreenOnTime = ++lastScreenOnTime
-            startActivity(intent)
-        } else {
-            startActivity(intent)
-        }
+        startActivity(intent)
+
     }
 
     override fun onRequestPermissionsResult(
@@ -120,32 +127,34 @@ class MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            if (allPermissionsGranted()) {
-                startSyncService()
-                if (!isDefaultLauncher()) {
-                    showSetDefaultLauncherDialog()
-                } else {
-                    Log.d("MainActivity", "isDeviceLocked: \${isDeviceLocked(this)}")
-//                    setWhileCloseLauncher()
-                    if (!devicePolicyManager.isAdminActive(adminComponent)) {
-                        requestDeviceAdminPermission()
-                    }
-                }
-                if (!this@MainActivity.packageManager.canRequestPackageInstalls()) {
-                    val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-                        data = Uri.parse("package:${this@MainActivity.packageName}")
-                    }
-                    this@MainActivity.startActivityForResult(
-                        intent,
-                        REQUEST_UNKNOWN_SOURCES_PERMISSION_CODE
-                    )
-                } else {
-                    openPreviousLauncher()
-                }
-            } else {
+            if (!allPermissionsGranted()) {
                 Toast.makeText(this, "Permisos necesarios no otorgados", Toast.LENGTH_SHORT).show()
                 finish()
             }
+
+            startSyncService()
+
+            if (!isDefaultLauncher()) {
+                showSetDefaultLauncherDialog()
+                return
+            }
+
+            if (!devicePolicyManager.isAdminActive(adminComponent)) {
+                requestDeviceAdminPermission()
+                return
+            }
+
+            if (!packageManager.canRequestPackageInstalls()) {
+                requestUnknownSourcesPermission()
+                return
+            }
+
+            if (!Settings.canDrawOverlays(this)) {
+                requestOverlayPermission()
+                return
+            }
+            if (isShowingDialog) return
+            openPreviousLauncher()
         }
     }
 
@@ -166,87 +175,66 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun isAccessibilityServiceEnabled(
-        context: Context,
-        service: Class<out AccessibilityService>,
-    ): Boolean {
-        val expectedComponentName = ComponentName(context, service).flattenToString()
-        val enabledServices = Settings.Secure.getString(
-            context.contentResolver,
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        ) ?: return false
-
-        val colonSplitter = TextUtils.SimpleStringSplitter(':')
-        colonSplitter.setString(enabledServices)
-        while (colonSplitter.hasNext()) {
-            val componentName = colonSplitter.next()
-            if (componentName.equals(expectedComponentName, ignoreCase = true)) {
-                return true
-            }
-        }
-        return false
-    }
-
-    private fun isDeviceLocked(context: Context): Boolean {
-        val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-        return keyguardManager.isKeyguardLocked || !powerManager.isInteractive
-    }
-
-//    private fun closePreviousLauncher() {
-//        val activityManager =
-//            this.applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-//
-//        activityManager.moveTaskToFront(this.taskId, 0)
-//        activityManager.killBackgroundProcesses("com.sgtc.launcher.SgtcLauncher3")
-//        activityManager.killBackgroundProcesses("com.sgtc.launcher.launcher")
-//    }
-
     override fun onResume() {
         super.onResume()
         Log.d("MainActivity", "onResume")
-        if (allPermissionsGranted()) {
-            startSyncService()
-            if (!isDefaultLauncher()) {
-                showSetDefaultLauncherDialog()
-            } else {
-                Log.d("MainActivity", "isDeviceLocked: \${isDeviceLocked(this)}")
-                if (!devicePolicyManager.isAdminActive(adminComponent)) {
-                    requestDeviceAdminPermission()
-                } else {
-                    screenStateReceiver = ScreenStateReceiver(this)
-                    val filter = IntentFilter(Intent.ACTION_SCREEN_OFF).apply {
-                        addAction(Intent.ACTION_USER_PRESENT)
-                        addAction(Intent.ACTION_SCREEN_ON)
-                    }
-                    registerReceiver(screenStateReceiver, filter)
-                    if (!this@MainActivity.packageManager.canRequestPackageInstalls()) {
-                        val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-                            data = Uri.parse("package:${this@MainActivity.packageName}")
-                        }
-                        this@MainActivity.startActivityForResult(
-                            intent,
-                            REQUEST_UNKNOWN_SOURCES_PERMISSION_CODE
-                        )
-                    } else {
-                        openPreviousLauncher()
-                    }
-                }
-            }
-        } else {
+
+        if (!allPermissionsGranted()) {
             ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE_PERMISSIONS)
+            return
         }
+
+        startSyncService()
+
+        if (!isDefaultLauncher()) {
+            showSetDefaultLauncherDialog()
+            return
+        }
+
+        if (!devicePolicyManager.isAdminActive(adminComponent)) {
+            requestDeviceAdminPermission()
+            return
+        }
+
+        registerScreenStateReceiver()
+
+        if (!packageManager.canRequestPackageInstalls()) {
+            requestUnknownSourcesPermission()
+            return
+        }
+
+        if (!Settings.canDrawOverlays(this)) {
+            requestOverlayPermission()
+            return
+        }
+        if (isShowingDialog) return
+        openPreviousLauncher()
     }
 
+    private fun registerScreenStateReceiver() {
+        screenStateReceiver = ScreenStateReceiver(this)
+        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF).apply {
+            addAction(Intent.ACTION_USER_PRESENT)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        registerReceiver(screenStateReceiver, filter)
+    }
 
-//    private fun setWhileCloseLauncher() {
-//        CoroutineScope(Dispatchers.IO).launch {
-//            while (isDeviceLocked(this@MainActivity)) {
-//                delay(5000)
-//                closePreviousLauncher()
-//            }
-//        }
-//    }
+    private fun requestUnknownSourcesPermission() {
+        val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+            data = Uri.parse("package:$packageName")
+        }
+        startActivityForResult(intent, REQUEST_UNKNOWN_SOURCES_PERMISSION_CODE)
+    }
+
+    private fun requestOverlayPermission() {
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:$packageName")
+        )
+        startActivityForResult(intent, 1234)
+    }
+
 
     private fun requestDeviceAdminPermission() {
         val componentName = ComponentName(this, MyDeviceAdminReceiver::class.java)
@@ -261,30 +249,52 @@ class MainActivity : AppCompatActivity() {
         startActivityForResult(intent, REQUEST_CODE_ENABLE_ADMIN)
     }
 
-    private fun saveCurrentTime() {
-        val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        val currentTimeMillis = System.currentTimeMillis()
-        sharedPreferences.edit().putLong("last_saved_time", currentTimeMillis).apply()
-    }
-
-    private fun shouldRequestAccessibilityPermission(): Boolean {
-        val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        val lastSavedTime = sharedPreferences.getLong("last_saved_time", 0L)
-        Log.d(
-            "MainActivity",
-            "lastSavedTime: $lastSavedTime, currentTime: ${System.currentTimeMillis()}, difference: ${System.currentTimeMillis() - lastSavedTime}"
-        )
-        if (lastSavedTime == 0L) {
-            return true
+    private val webSocketReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            Log.d("MainActivity", "onReceive: ${intent?.action}")
+            if (intent?.action == "com.kiper.app.SHOW_CUSTOM_DIALOG") {
+                // Bring the app to foreground
+                val activityIntent = Intent(context, MainActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    putExtra("showDialog", true)  // Pass flag to show dialog
+                }
+                context?.startActivity(activityIntent)
+            }
         }
 
-        val currentTimeMillis = System.currentTimeMillis()
-        val differenceInMillis = currentTimeMillis - lastSavedTime
-
-        val oneDayInMillis = 24 * 60 * 60 * 1000
-
-        return differenceInMillis >= oneDayInMillis
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(webSocketReceiver) // Unregister to prevent memory leaks
+    }
+
+    private fun showCustomDialog(message: String) {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.care_dialog)
+        dialog.setCancelable(true)
+
+        val messageTextView = dialog.findViewById<TextView>(R.id.tvDescription)
+        messageTextView.text = message
+
+        // Close button
+        val btnClose = dialog.findViewById<Button>(R.id.btnClose)
+        btnClose.setOnClickListener {
+            dialog.dismiss()
+            isShowingDialog = false
+            openPreviousLauncher()
+        }
+
+        // Show dialog
+        dialog.show()
+
+        // Customize window settings
+        val window = dialog.window
+        window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+    }
+
 
     companion object {
         private const val REQUEST_CODE_ENABLE_ADMIN = 11

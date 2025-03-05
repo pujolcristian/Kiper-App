@@ -7,6 +7,7 @@ import com.kiper.app.network.NetworkMonitor
 import com.kiper.app.service.SyncViewModel
 import com.kiper.core.domain.usecase.CheckAndDownloadVersionUseCase
 import com.kiper.core.domain.usecase.DeleteAllRecordingsUseCase
+import com.kiper.core.domain.usecase.GetCapsuleMessageUseCase
 import com.kiper.core.domain.usecase.GetDeviceSchedulesUseCase
 import com.kiper.core.domain.usecase.GetRecordingsForDayUseCase
 import com.kiper.core.domain.usecase.SaveRecordingUseCase
@@ -23,7 +24,6 @@ import javax.inject.Singleton
 object AppModule {
 
 
-
     @Provides
     @Singleton
     fun provideSyncViewModel(
@@ -32,7 +32,8 @@ object AppModule {
         saveRecordingUseCase: SaveRecordingUseCase,
         uploadAudioUseCase: UploadAudioUseCase,
         deleteAllRecordingsUseCase: DeleteAllRecordingsUseCase,
-        checkAndDownloadVersionUseCase: CheckAndDownloadVersionUseCase
+        checkAndDownloadVersionUseCase: CheckAndDownloadVersionUseCase,
+        getCapsuleMessageUseCase: GetCapsuleMessageUseCase
     ): SyncViewModel {
         return SyncViewModel(
             getDeviceSchedulesUseCase = getDeviceSchedulesUseCase,
@@ -40,7 +41,8 @@ object AppModule {
             saveRecordingUseCase = saveRecordingUseCase,
             uploadAudioUseCase = uploadAudioUseCase,
             deleteAllRecordingsUseCase = deleteAllRecordingsUseCase,
-            checkAndDownloadVersionUseCase = checkAndDownloadVersionUseCase
+            checkAndDownloadVersionUseCase = checkAndDownloadVersionUseCase,
+            getCapsuleMessageUseCase = getCapsuleMessageUseCase
         )
     }
 

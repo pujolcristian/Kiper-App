@@ -16,6 +16,9 @@ interface ApiService {
     @GET("getSchedule")
     suspend fun getSchedule(@Query("deviceId") deviceId: String): Response<BaseResponse<SchedulesResponseDto>>
 
+    @GET("getSchedule")
+    suspend fun getCapsuleMessage(@Query("deviceId") deviceId: String): Response<BaseResponse<String>>
+
     @Multipart
     @POST("command")
     suspend fun uploadAudio(

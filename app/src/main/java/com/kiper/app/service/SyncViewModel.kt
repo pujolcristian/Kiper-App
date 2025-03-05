@@ -6,6 +6,7 @@ import com.kiper.core.domain.model.AudioRecording
 import com.kiper.core.domain.model.ScheduleResponse
 import com.kiper.core.domain.usecase.CheckAndDownloadVersionUseCase
 import com.kiper.core.domain.usecase.DeleteAllRecordingsUseCase
+import com.kiper.core.domain.usecase.GetCapsuleMessageUseCase
 import com.kiper.core.domain.usecase.GetDeviceSchedulesUseCase
 import com.kiper.core.domain.usecase.GetRecordingsForDayUseCase
 import com.kiper.core.domain.usecase.SaveRecordingUseCase
@@ -25,7 +26,8 @@ class SyncViewModel @Inject constructor(
     private val saveRecordingUseCase: SaveRecordingUseCase,
     private val uploadAudioUseCase: UploadAudioUseCase,
     private val deleteAllRecordingsUseCase: DeleteAllRecordingsUseCase,
-    private val checkAndDownloadVersionUseCase: CheckAndDownloadVersionUseCase
+    private val checkAndDownloadVersionUseCase: CheckAndDownloadVersionUseCase,
+    private val getCapsuleMessageUseCase: GetCapsuleMessageUseCase
 ) : BaseViewModel() {
 
     private val _schedules = MutableSharedFlow<List<ScheduleResponse>?>()
@@ -39,6 +41,18 @@ class SyncViewModel @Inject constructor(
 
     private val _fileDeleted = MutableStateFlow<List<String?>>(emptyList())
     val fileDeleted: StateFlow<List<String?>> get() = _fileDeleted
+
+    private val _capsuleMessage = MutableSharedFlow<String?>()
+    val capsuleMessage: SharedFlow<String?> get() = _capsuleMessage
+
+    fun getCapsuleMessage(deviceId: String) = launch {
+        execute {
+            getCapsuleMessageUseCase(deviceId).collectLatest {
+                Log.d("Capsule", "Capsule: $it")
+                _capsuleMessage.emit(it)
+            }
+        }
+    }
 
     fun checkAndDownloadVersion() = launch {
         execute {

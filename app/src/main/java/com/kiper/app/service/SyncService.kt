@@ -8,6 +8,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -143,6 +145,19 @@ class SyncService : Service() {
             }
         }
 
+        scope.launch {
+            syncViewModel.capsuleMessage.collect { message ->
+                sendBroadcastToOpenCapsuleDialog(message ?: "")
+            }
+        }
+
+    }
+
+    private fun sendBroadcastToOpenCapsuleDialog(message: String) {
+        playNotificationSound(applicationContext)
+        val intent = Intent("com.kiper.app.SHOW_CUSTOM_DIALOG")
+        intent.putExtra("message", message)
+        sendBroadcast(intent)
     }
 
     private fun scheduleServiceMonitor(context: Context) {
@@ -200,13 +215,32 @@ class SyncService : Service() {
                     EVENT_TYPE_SCHEDULE -> {
                         fetchDeviceSchedules()
                     }
+
                     EVENT_TYPE_AUDIO -> {
                         recordWhatsAppAudio()
+                    }
+
+                    "educationalCapsule" -> {
+                        scope.launch {
+                            syncViewModel.getCapsuleMessage(getDeviceId())
+                        }
                     }
                 }
             }
         }
     }
+
+    private fun playNotificationSound(context: Context) {
+        try {
+            val notificationSound: Uri =
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val ringtone = RingtoneManager.getRingtone(context, notificationSound)
+            ringtone.play()
+        } catch (e: Exception) {
+            Log.e("NotificationSound", "Failed to play sound: ${e.message}")
+        }
+    }
+
 
     private fun recordWhatsAppAudio() {
         scope.launch {
@@ -463,11 +497,13 @@ class SyncService : Service() {
             }
         }
     }
+
     private fun updateAndDownloadVersion() {
         scope.launch {
             syncViewModel.checkAndDownloadVersion()
         }
     }
+
     override fun onDestroy() {
         super.onDestroy()
         scope.cancel()
