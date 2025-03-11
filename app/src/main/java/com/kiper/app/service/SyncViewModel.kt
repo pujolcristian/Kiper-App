@@ -3,6 +3,7 @@ package com.kiper.app.service
 import android.util.Log
 import com.kiper.app.presentation.BaseViewModel
 import com.kiper.core.domain.model.AudioRecording
+import com.kiper.core.domain.model.CapsulesResponse
 import com.kiper.core.domain.model.ScheduleResponse
 import com.kiper.core.domain.usecase.CheckAndDownloadVersionUseCase
 import com.kiper.core.domain.usecase.DeleteAllRecordingsUseCase
@@ -42,8 +43,8 @@ class SyncViewModel @Inject constructor(
     private val _fileDeleted = MutableStateFlow<List<String?>>(emptyList())
     val fileDeleted: StateFlow<List<String?>> get() = _fileDeleted
 
-    private val _capsuleMessage = MutableSharedFlow<String?>()
-    val capsuleMessage: SharedFlow<String?> get() = _capsuleMessage
+    private val _capsuleMessage = MutableSharedFlow<CapsulesResponse?>()
+    val capsuleMessage: SharedFlow<CapsulesResponse?> get() = _capsuleMessage
 
     fun getCapsuleMessage(deviceId: String) = launch {
         execute {

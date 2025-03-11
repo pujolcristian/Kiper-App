@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.kiper.app.presentation.MainActivity
-import com.kiper.app.service.SyncService
 
 class RestartReceiver : BroadcastReceiver() {
     @SuppressLint("UnsafeProtectedBroadcastReceiver")

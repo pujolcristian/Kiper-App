@@ -18,16 +18,26 @@ import android.util.Log
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.Button
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.viewpager2.widget.ViewPager2
 import com.kiper.app.R
+import com.kiper.app.presentation.adapters.CardAdapter
 import com.kiper.app.receiver.MyDeviceAdminReceiver
 import com.kiper.app.receiver.ScreenStateReceiver
 import com.kiper.app.service.SyncService
+import com.kiper.core.util.Constants.ACTION_SHOW_CUSTOM_DIALOG
+import com.kiper.core.util.Constants.EXTRA_MESSAGE
+import com.kiper.core.util.Constants.EXTRA_SHOW_DIALOG
+import com.kiper.core.util.Constants.LAUNCHER_ACTIVITY
+import com.kiper.core.util.Constants.LAUNCHER_PACKAGE
+import com.kiper.core.util.Constants.REQUEST_CODE_ENABLE_ADMIN
+import com.kiper.core.util.Constants.REQUEST_CODE_PERMISSIONS
+import com.kiper.core.util.Constants.REQUEST_UNKNOWN_SOURCES_PERMISSION_CODE
+import com.kiper.core.util.Constants.TAG_MAIN_ACTIVITY
 
 @Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
@@ -44,21 +54,22 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var devicePolicyManager: DevicePolicyManager
     private lateinit var adminComponent: ComponentName
+    private lateinit var adapter: CardAdapter
 
     private var isShowingDialog = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_activity)
-        Log.d("MainActivity", "onCreate")
+        Log.d(TAG_MAIN_ACTIVITY, "onCreate")
 
         // Register the broadcast receiver
-        val registerFilter = IntentFilter("com.kiper.app.SHOW_CUSTOM_DIALOG")
+        val registerFilter = IntentFilter(ACTION_SHOW_CUSTOM_DIALOG)
         registerReceiver(webSocketReceiver, registerFilter)
 
-        if (intent?.getBooleanExtra("showDialog", false) == true) {
-            val message = intent.getStringExtra("message") ?: ""
-            showCustomDialog(message = message)
+        if (intent?.getBooleanExtra(EXTRA_SHOW_DIALOG, false) == true) {
+            val messages: List<String>? = intent.getStringArrayListExtra(EXTRA_MESSAGE)
+            showCustomDialog(messages = messages)
             isShowingDialog = true
         }
 
@@ -68,7 +79,7 @@ class MainActivity : AppCompatActivity() {
         if (!devicePolicyManager.isAdminActive(adminComponent)) {
             requestDeviceAdminPermission()
         } else {
-            screenStateReceiver = ScreenStateReceiver(activity = this)
+            screenStateReceiver = ScreenStateReceiver()
             val filter = IntentFilter(Intent.ACTION_SCREEN_OFF).apply {
                 addAction(Intent.ACTION_USER_PRESENT)
                 addAction(Intent.ACTION_SCREEN_ON)
@@ -92,16 +103,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSetDefaultLauncherDialog() {
         AlertDialog.Builder(this)
-            .setTitle("KIPER")
-            .setMessage("Por favor, establece esta Kiper como el lanzador por defecto para continuar.")
-            .setPositiveButton("OK") { _, _ ->
+            .setTitle(getString(R.string.kiper))
+            .setMessage(getString(R.string.please_make_kiper_as_a_default_launcher))
+            .setPositiveButton(getString(R.string.ok)) { _, _ ->
                 val intent = Intent(Settings.ACTION_HOME_SETTINGS)
                 startActivity(intent)
             }
-            .setNegativeButton("Cancel") { _, _ ->
+            .setNegativeButton(getString(R.string.cancel)) { _, _ ->
                 Toast.makeText(
                     this,
-                    "Kiper debe configurarse como lanzador predeterminado",
+                    getString(R.string.kiper_must_be_default_launcher),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -115,7 +126,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun openPreviousLauncher() {
         val intent = Intent(Intent.ACTION_MAIN).apply {
-            component = ComponentName("com.sgtc.launcher", "com.sgtc.launcher.Launcher")
+            component = ComponentName(LAUNCHER_PACKAGE, LAUNCHER_ACTIVITY)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         startActivity(intent)
@@ -128,7 +139,10 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (!allPermissionsGranted()) {
-                Toast.makeText(this, "Permisos necesarios no otorgados", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    getString(R.string.required_permissions_not_granted), Toast.LENGTH_SHORT
+                ).show()
                 finish()
             }
 
@@ -163,12 +177,15 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_CODE_ENABLE_ADMIN) {
             if (resultCode == RESULT_OK) {
-                Toast.makeText(this, "Administrador del dispositivo habilitado", Toast.LENGTH_SHORT)
+                Toast.makeText(
+                    this,
+                    getString(R.string.device_administrator_enabled), Toast.LENGTH_SHORT
+                )
                     .show()
             } else {
                 Toast.makeText(
                     this,
-                    "Administrador del dispositivo no habilitado",
+                    getString(R.string.device_administrator_not_enabled),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -177,7 +194,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        Log.d("MainActivity", "onResume")
+        Log.d(TAG_MAIN_ACTIVITY, "onResume")
 
         if (!allPermissionsGranted()) {
             ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE_PERMISSIONS)
@@ -212,7 +229,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun registerScreenStateReceiver() {
-        screenStateReceiver = ScreenStateReceiver(this)
+        screenStateReceiver = ScreenStateReceiver()
         val filter = IntentFilter(Intent.ACTION_SCREEN_OFF).apply {
             addAction(Intent.ACTION_USER_PRESENT)
             addAction(Intent.ACTION_SCREEN_ON)
@@ -240,11 +257,10 @@ class MainActivity : AppCompatActivity() {
         val componentName = ComponentName(this, MyDeviceAdminReceiver::class.java)
         val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
             putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName)
-
-            putExtra(
-                DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                "Habilita la administración del dispositivo para utilizar funciones adicionales."
-            )
+                .putExtra(
+                    DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                    getString(R.string.device_admin_explanation)
+                )
         }
         startActivityForResult(intent, REQUEST_CODE_ENABLE_ADMIN)
     }
@@ -252,33 +268,35 @@ class MainActivity : AppCompatActivity() {
     private val webSocketReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             Log.d("MainActivity", "onReceive: ${intent?.action}")
-            if (intent?.action == "com.kiper.app.SHOW_CUSTOM_DIALOG") {
+            if (intent?.action == ACTION_SHOW_CUSTOM_DIALOG) {
                 // Bring the app to foreground
                 val activityIntent = Intent(context, MainActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    putExtra("showDialog", true)  // Pass flag to show dialog
+                    putStringArrayListExtra(EXTRA_MESSAGE, intent.getStringArrayListExtra(EXTRA_MESSAGE))
+                    putExtra(EXTRA_SHOW_DIALOG, true)  // Pass flag to show dialog
                 }
                 context?.startActivity(activityIntent)
             }
         }
-
     }
+
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterReceiver(webSocketReceiver) // Unregister to prevent memory leaks
+        unregisterReceiver(webSocketReceiver)
     }
 
-    private fun showCustomDialog(message: String) {
+    private fun showCustomDialog(messages: List<String>?) {
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setContentView(R.layout.care_dialog)
         dialog.setCancelable(true)
 
-        val messageTextView = dialog.findViewById<TextView>(R.id.tvDescription)
-        messageTextView.text = message
+        val viewPager = dialog.findViewById<ViewPager2>(R.id.viewPager)
 
-        // Close button
+        adapter = CardAdapter(messages ?: emptyList())
+        viewPager.adapter = adapter
+
         val btnClose = dialog.findViewById<Button>(R.id.btnClose)
         btnClose.setOnClickListener {
             dialog.dismiss()
@@ -286,7 +304,6 @@ class MainActivity : AppCompatActivity() {
             openPreviousLauncher()
         }
 
-        // Show dialog
         dialog.show()
 
         // Customize window settings
@@ -295,10 +312,4 @@ class MainActivity : AppCompatActivity() {
         window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
     }
 
-
-    companion object {
-        private const val REQUEST_CODE_ENABLE_ADMIN = 11
-        private const val REQUEST_CODE_PERMISSIONS = 10
-        private const val REQUEST_UNKNOWN_SOURCES_PERMISSION_CODE = 12
-    }
 }

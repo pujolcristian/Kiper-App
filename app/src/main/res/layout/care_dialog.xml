@@ -17,7 +17,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="8dp"
             android:layout_marginTop="10dp"
-            android:text="¡Recuerda! 🧠✨"
+            android:text="@string/remember"
             android:textAlignment="center"
             android:textColor="#FFFFFF"
             android:textSize="34sp"
@@ -35,21 +35,19 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tvTitle">
 
-            <TextView
-                android:id="@+id/tvDescription"
+
+            <androidx.viewpager2.widget.ViewPager2
+                android:id="@+id/viewPager"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="0dp"
                 android:layout_marginHorizontal="8dp"
+                tools:listitem="@layout/item_view_pager"
                 android:layout_marginTop="30dp"
-                android:lineHeight="30dp"
-                android:text="Si alguien te toca tus partes privadas 🚫✋🏼, siempre cuéntaselo a tus papás👨‍👩‍👧‍👦🗣️"
-                android:textAlignment="center"
-                android:textColor="#4A88C8"
-                android:textSize="24sp"
                 app:layout_constraintBottom_toTopOf="@+id/btnClose"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
+
 
             <Button
                 android:id="@+id/btnClose"
@@ -59,7 +57,7 @@
                 android:layout_marginBottom="10dp"
                 android:backgroundTint="#4A88C8"
                 android:padding="20dp"
-                android:text="¡Es tu turno!"
+                android:text="@string/is_your_turn"
                 android:textAllCaps="false"
                 android:textSize="26sp"
                 android:textStyle="bold"

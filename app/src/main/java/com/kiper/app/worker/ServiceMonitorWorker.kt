@@ -7,6 +7,8 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import android.util.Log
 import com.kiper.app.service.SyncService
+import com.kiper.core.util.Constants.ACTION_CLOSE_APP
+import com.kiper.core.util.Constants.LAUNCHER_PACKAGE
 
 class ServiceMonitorWorker(
     context: Context,
@@ -22,8 +24,8 @@ class ServiceMonitorWorker(
             applicationContext.startService(serviceIntent)
         } else {
             Log.d("ServiceMonitorWorker", "El servicio ya está activo.")
-            val intent = Intent("com.kiper.app.CLOSE_APP_ACTION").apply {
-                putExtra("packageName", "com.sgtc.launcher")
+            val intent = Intent(ACTION_CLOSE_APP).apply {
+                putExtra("packageName", LAUNCHER_PACKAGE)
             }
             applicationContext.sendBroadcast(intent)
         }
@@ -31,7 +33,6 @@ class ServiceMonitorWorker(
         return Result.success()
     }
 
-    // Método para verificar si el servicio está en ejecución
     private fun isServiceRunning(serviceClass: Class<*>): Boolean {
         val activityManager = applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         for (service in activityManager.getRunningServices(Int.MAX_VALUE)) {

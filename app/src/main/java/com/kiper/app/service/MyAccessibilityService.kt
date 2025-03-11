@@ -18,10 +18,11 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.kiper.app.receiver.ScreenController
 import com.kiper.app.receiver.ScreenStateReceiver
 import com.kiper.app.receiver.ServiceRevivalReceiver
 import com.kiper.core.framework.worker.CloseAppWorker
+import com.kiper.core.util.Constants.ACTION_CLOSE_APP
+import com.kiper.core.util.Constants.LAUNCHER_PACKAGE
 import java.util.concurrent.TimeUnit
 
 class MyAccessibilityService : AccessibilityService() {
@@ -39,17 +40,17 @@ class MyAccessibilityService : AccessibilityService() {
     private val closeAppReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             Log.d("closeAppReceiver", "intent: ${intent?.action}")
-            if (intent?.action == "com.kiper.app.CLOSE_APP_ACTION") {
+            if (intent?.action == ACTION_CLOSE_APP) {
                 val packageName = intent.getStringExtra("packageName")
                 packageName?.let {
-                    closeApp("com.sgtc.launcher")
+                    closeApp(LAUNCHER_PACKAGE)
                 }
             }
         }
     }
 
     override fun onServiceConnected() {
-        registerReceiver(closeAppReceiver, IntentFilter("com.kiper.app.CLOSE_APP_ACTION"))
+        registerReceiver(closeAppReceiver, IntentFilter(ACTION_CLOSE_APP))
         setupAccessibilityService()
         registerScreenReceiver()
         scheduleAppClosureWithWorkManager(applicationContext)
@@ -80,14 +81,13 @@ class MyAccessibilityService : AccessibilityService() {
         ))
     }
 
-    fun openAppInfo() {
+    private fun openAppInfo() {
         val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
         Log.d(
             "MyAccessibilityService",
             "try - Abriendo información de la app"
         )
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-           // data = Uri.parse("package:com.sprd.engineermode")
             data = Uri.parse("package:com.sprd.engineermode")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
@@ -152,30 +152,14 @@ class MyAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && event.packageName == "com.sgtc.launcher") {
-            // scheduleAppClosure()
-        }
         Log.d("MyAccessibilityService", "TYPE_WINDOW_STATE_CHANGED: ${event?.eventType}, ${event?.packageName}")
     }
-
-//     fun scheduleAppClosure() {
-//         Log.d("MyAccessibilityService", "Scheduling app closure")
-//        closeAppRunnable?.let { handler.removeCallbacks(it) }
-//        closeAppRunnable = object : Runnable {
-//            override fun run() {
-//                closeApp("com.sgtc.launcher")
-//                handler.postDelayed(this, 1 * 60 * 1000)
-//                Log.d("MyAccessibility", "Ciclo de cierre de app")
-//            }
-//        }
-//        handler.postDelayed(closeAppRunnable!!, 1 * 30 * 1000)
-//    }
 
     private fun scheduleAppClosureWithWorkManager(context: Context) {
         val workManager = WorkManager.getInstance(context)
 
         val closeAppWorkRequest = PeriodicWorkRequestBuilder<CloseAppWorker>(
-            15, TimeUnit.MINUTES // Configura el intervalo de repetición
+            15, TimeUnit.MINUTES
         ).build()
         workManager.cancelAllWorkByTag(WORK_TAG)
         workManager.enqueueUniquePeriodicWork(
@@ -183,15 +167,6 @@ class MyAccessibilityService : AccessibilityService() {
             ExistingPeriodicWorkPolicy.REPLACE,
             closeAppWorkRequest
         )
-    }
-
-    private fun turnOnScreen() {
-        val screenController = ScreenController(this)
-        screenController.turnScreenOn()
-        openAppInfo()
-        Handler(Looper.getMainLooper()).postDelayed({
-            screenController.releaseScreen()
-        },10 * 1000)
     }
 
 
