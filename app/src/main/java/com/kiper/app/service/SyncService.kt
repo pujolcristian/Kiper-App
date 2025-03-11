@@ -5,9 +5,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.BroadcastReceiver
+import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -20,6 +23,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.kiper.app.R
 import com.kiper.app.network.NetworkMonitor
 import com.kiper.app.worker.ServiceMonitorWorker
 import com.kiper.core.data.source.remote.WebSocketManager
@@ -31,14 +35,22 @@ import com.kiper.core.domain.model.isAfterScheduleToday
 import com.kiper.core.domain.model.isIntoSchedule
 import com.kiper.core.framework.worker.AudioRecordingWorker
 import com.kiper.core.util.Constants
+import com.kiper.core.util.Constants.ACTION_CLOSE_APP
+import com.kiper.core.util.Constants.ACTION_SHOW_CUSTOM_DIALOG
 import com.kiper.core.util.Constants.CHANNEL_ID
+import com.kiper.core.util.Constants.CHANNEL_NAME
 import com.kiper.core.util.Constants.EVENT_TYPE_AUDIO
+import com.kiper.core.util.Constants.EVENT_TYPE_CAPSULE
 import com.kiper.core.util.Constants.EVENT_TYPE_PROCESS_AUDIO
 import com.kiper.core.util.Constants.EVENT_TYPE_SCHEDULE
+import com.kiper.core.util.Constants.EXTRA_MESSAGE
 import com.kiper.core.util.Constants.NOTIFICATION_ID
-import com.kiper.core.util.Constants.TAG
+import com.kiper.core.util.Constants.TAG_DELETE_FILES
 import com.kiper.core.util.Constants.TAG_FUTURE_WORKER
+import com.kiper.core.util.Constants.TAG_NOTIFICATION_SOUND
+import com.kiper.core.util.Constants.TAG_SYNC_SERVICE
 import com.kiper.core.util.Constants.TAG_WORKER
+import com.kiper.core.util.Constants.WORK_SERVICE_MONITOR
 import com.kiper.core.util.FileUtil
 import com.kiper.core.util.parseTime
 import com.kiper.core.util.timeString
@@ -83,8 +95,8 @@ class SyncService : Service() {
 
     private val closeAppReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            Log.d("SyncService", "SyncService - intent: ${intent?.action}")
-            if (intent?.action == "com.kiper.app.CLOSE_APP_ACTION") {
+            Log.d(TAG_SYNC_SERVICE, "$TAG_SYNC_SERVICE - intent: ${intent?.action}")
+            if (intent?.action == ACTION_CLOSE_APP) {
                 val packageName = intent.getStringExtra("packageName")
                 packageName?.let {
                     networkMonitor.clear()
@@ -103,7 +115,7 @@ class SyncService : Service() {
         initWebSocket()
         fetchDeviceSchedules()
         scheduleServiceMonitor(applicationContext)
-        registerReceiver(closeAppReceiver, IntentFilter("com.kiper.app.CLOSE_APP_ACTION"))
+        registerReceiver(closeAppReceiver, IntentFilter(ACTION_CLOSE_APP))
     }
 
     private fun setUpObservers() {
@@ -143,6 +155,21 @@ class SyncService : Service() {
             }
         }
 
+        scope.launch {
+            syncViewModel.capsuleMessage.collect { data ->
+                sendBroadcastToOpenCapsuleDialog(data?.messages)
+            }
+        }
+
+    }
+
+    private fun sendBroadcastToOpenCapsuleDialog(message: List<String>?) {
+        Log.d("sendBroadcastToOpenCapsuleDialog", "Message: $message")
+        playNotificationSound(applicationContext)
+
+        val intent = Intent(ACTION_SHOW_CUSTOM_DIALOG)
+        intent.putStringArrayListExtra(EXTRA_MESSAGE, ArrayList(message ?: emptyList()))
+        sendBroadcast(intent)
     }
 
     private fun scheduleServiceMonitor(context: Context) {
@@ -151,9 +178,7 @@ class SyncService : Service() {
         ).build()
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            "ServiceMonitorWork",
-            ExistingPeriodicWorkPolicy.REPLACE,
-            workRequest
+            WORK_SERVICE_MONITOR, ExistingPeriodicWorkPolicy.REPLACE, workRequest
         )
     }
 
@@ -161,7 +186,7 @@ class SyncService : Service() {
     private fun deleteFilesWithBaseName(baseName: String) {
         val directory = applicationContext.filesDir
         val matchingFiles = findFilesWithBaseName(directory, baseName)
-        Log.d("DeleteFiles", "Files to delete: $matchingFiles")
+        Log.d(TAG_DELETE_FILES, "Files to delete: $matchingFiles")
         matchingFiles.forEach { file ->
             if (file.delete()) {
                 println("Deleted file: ${file.name}")
@@ -200,13 +225,32 @@ class SyncService : Service() {
                     EVENT_TYPE_SCHEDULE -> {
                         fetchDeviceSchedules()
                     }
+
                     EVENT_TYPE_AUDIO -> {
                         recordWhatsAppAudio()
+                    }
+
+                    EVENT_TYPE_CAPSULE -> {
+                        scope.launch {
+                            syncViewModel.getCapsuleMessage(getDeviceId())
+                        }
                     }
                 }
             }
         }
     }
+
+    private fun playNotificationSound(context: Context) {
+        try {
+            val notificationSound: Uri =
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val ringtone = RingtoneManager.getRingtone(context, notificationSound)
+            ringtone.play()
+        } catch (e: Exception) {
+            Log.e(TAG_NOTIFICATION_SOUND, "Failed to play sound: ${e.message}")
+        }
+    }
+
 
     private fun recordWhatsAppAudio() {
         scope.launch {
@@ -336,8 +380,7 @@ class SyncService : Service() {
     }
 
     private fun getAdjustDayToWork(
-        schedule: ScheduleResponse,
-        typeAdjust: Boolean
+        schedule: ScheduleResponse, typeAdjust: Boolean
     ): ScheduleCalendar {
         return if (typeAdjust) {
             adjustToTomorrow(schedule.startTime.parseTime, schedule.endTime.parseTime)
@@ -393,11 +436,10 @@ class SyncService : Service() {
             "eventType" to eventType
         )
 
-        val workRequest = OneTimeWorkRequestBuilder<AudioRecordingWorker>()
-            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
-            .setInputData(data)
-            .addTag(tagWorker)
-            .build()
+        val workRequest = OneTimeWorkRequestBuilder<AudioRecordingWorker>().setInitialDelay(
+            delay,
+            TimeUnit.MILLISECONDS
+        ).setInputData(data).addTag(tagWorker).build()
 
         syncViewModel.saveRecording(
             AudioRecording(
@@ -418,8 +460,8 @@ class SyncService : Service() {
 
     private fun createNotification(): Notification {
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("Sync Service")
-            .setContentText("Running in the background")
+            .setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(CHANNEL_NAME)
+            .setContentText(getString(R.string.sync_service_running))
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE).build()
 
@@ -427,7 +469,7 @@ class SyncService : Service() {
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel =
-                NotificationChannel(CHANNEL_ID, "Sync Service", NotificationManager.IMPORTANCE_LOW)
+                NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW)
             notificationManager.createNotificationChannel(channel)
         }
         return notification
@@ -463,11 +505,13 @@ class SyncService : Service() {
             }
         }
     }
+
     private fun updateAndDownloadVersion() {
         scope.launch {
             syncViewModel.checkAndDownloadVersion()
         }
     }
+
     override fun onDestroy() {
         super.onDestroy()
         scope.cancel()

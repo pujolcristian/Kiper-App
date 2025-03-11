@@ -1,5 +1,6 @@
 package com.kiper.core.data
 
+import com.kiper.core.data.dto.CapsulesResponseDto
 import com.kiper.core.data.dto.SchedulesResponseDto
 import com.kiper.core.data.dto.UpdateDataResponseDto
 import com.kiper.core.data.dto.base.BaseResponse
@@ -15,6 +16,9 @@ import retrofit2.http.Query
 interface ApiService {
     @GET("getSchedule")
     suspend fun getSchedule(@Query("deviceId") deviceId: String): Response<BaseResponse<SchedulesResponseDto>>
+
+    @GET("getEducationalCapsule")
+    suspend fun getCapsuleMessage(@Query("deviceId") deviceId: String): Response<BaseResponse<CapsulesResponseDto>>
 
     @Multipart
     @POST("command")

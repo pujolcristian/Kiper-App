@@ -12,7 +12,7 @@ import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.kiper.core.framework.audioRecorder.AndroidAudioRecorder
-import com.kiper.core.util.Constants.TAG
+import com.kiper.core.util.Constants.TAG_RECORDING_SERVICE
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import javax.inject.Inject
@@ -71,7 +71,7 @@ class AudioRecordingService : Service() {
 
     private fun startRecording() {
         if (isRecording || recordingName.isNullOrEmpty() || remainingDuration <= 0) {
-            Log.w(TAG, "Cannot start recording: already recording or invalid parameters")
+            Log.w(TAG_RECORDING_SERVICE, "Cannot start recording: already recording or invalid parameters")
             return
         }
 
@@ -80,7 +80,7 @@ class AudioRecordingService : Service() {
             val file = File(directory, recordingName!!)
             recorder.start(file)
             isRecording = true
-            Log.d(TAG, "Recording started for file: $file")
+            Log.d(TAG_RECORDING_SERVICE, "Recording started for file: $file")
 
             // Schedule stop after remainingDuration
             Handler(Looper.getMainLooper()).postDelayed({
@@ -88,23 +88,23 @@ class AudioRecordingService : Service() {
             }, remainingDuration)
 
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start recording", e)
+            Log.e(TAG_RECORDING_SERVICE, "Failed to start recording", e)
             isRecording = false
         }
     }
 
     private fun stopRecording() {
         if (!isRecording) {
-            Log.w(TAG, "Cannot stop recording: no recording in progress")
+            Log.w(TAG_RECORDING_SERVICE, "Cannot stop recording: no recording in progress")
             return
         }
 
         try {
             recorder.stop()
             isRecording = false
-            Log.d(TAG, "Recording stopped successfully")
+            Log.d(TAG_RECORDING_SERVICE, "Recording stopped successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to stop recording", e)
+            Log.e(TAG_RECORDING_SERVICE, "Failed to stop recording", e)
         } finally {
             stopForeground(true)
             stopSelf()
@@ -113,8 +113,8 @@ class AudioRecordingService : Service() {
 
 
     private fun pauseRecording() {
-        Log.d(TAG, "Pausing recording $isRecording")
-        Log.d(TAG, "Recording paused")
+        Log.d(TAG_RECORDING_SERVICE, "Pausing recording $isRecording")
+        Log.d(TAG_RECORDING_SERVICE, "Recording paused")
         recorder.stop()
         isRecording = false
     }
@@ -122,7 +122,7 @@ class AudioRecordingService : Service() {
     private fun recordThirtySeconds() {
         if (thirtySecondsRecordingName.isNullOrEmpty()) {
             Log.w(
-                TAG,
+                TAG_RECORDING_SERVICE,
                 "Cannot start 30-second recording: no active recording or invalid parameters"
             )
             return
@@ -137,7 +137,7 @@ class AudioRecordingService : Service() {
                 recorder.start(file)
                 isRecording = true
 
-                Log.d(TAG, "Started 30-second recording to file: $file")
+                Log.d(TAG_RECORDING_SERVICE, "Started 30-second recording to file: $file")
 
                 // Schedule stop after 30 seconds
                 Handler(Looper.getMainLooper()).postDelayed({
@@ -147,7 +147,7 @@ class AudioRecordingService : Service() {
                     startRecording()
                 }, 30_000)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to record 30 seconds", e)
+                Log.e(TAG_RECORDING_SERVICE, "Failed to record 30 seconds", e)
                 startRecording() // Attempt to resume main recording
             }
         }, 6_000)

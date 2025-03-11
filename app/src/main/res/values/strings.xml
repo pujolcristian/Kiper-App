@@ -1,8 +1,19 @@
 <resources>
     <string name="app_name">Kiper-App</string>
-    <!--
-    This string is used for square devices and overridden by hello_world in
-    values-round/strings.xml for round devices.
-    -->
-    <string name="hello_world">From the Square world,\nHello, %1$s!</string>
+    <string name="kiper">KIPER</string>
+
+    <!-- Diálogs and permission messages -->
+    <string name="please_make_kiper_as_a_default_launcher">Por favor, haz de Kiper el lanzador predeterminado.</string>
+    <string name="kiper_must_be_default_launcher">Kiper debe ser el lanzador predeterminado.</string>
+    <string name="ok">Aceptar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="required_permissions_not_granted">No se concedieron los permisos requeridos.</string>
+    <string name="device_administrator_enabled">Administrador de dispositivo habilitado.</string>
+    <string name="device_administrator_not_enabled">Administrador de dispositivo no habilitado.</string>
+
+    <string name="device_admin_explanation">Habilita la administración del dispositivo para utilizar funciones adicionales.</string>
+    <string name="sync_service_running">Running in the background</string>
+    <string name="remember">¡Recuerda! 🧠✨</string>
+    <string name="is_your_turn">¡Es tu turno!</string>
+
 </resources>

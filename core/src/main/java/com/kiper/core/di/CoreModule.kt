@@ -6,17 +6,21 @@ import androidx.work.WorkManager
 import com.kiper.core.data.ApiService
 import com.kiper.core.data.ConditionalLoggingInterceptor
 import com.kiper.core.data.repository.AudioRepositoryImpl
+import com.kiper.core.data.repository.CapsuleRepositoryImpl
 import com.kiper.core.data.repository.UpdateRepositoryImpl
 import com.kiper.core.data.source.local.AudioLocalDataSource
 import com.kiper.core.data.source.local.dao.AudioRecordingDao
 import com.kiper.core.data.source.local.dao.ScheduleDao
 import com.kiper.core.data.source.local.db.AppDatabase
 import com.kiper.core.data.source.remote.AudioRemoteDataSource
+import com.kiper.core.data.source.remote.CapsuleRemoteDataSource
 import com.kiper.core.data.source.remote.UpdateAppRemoteDataSource
 import com.kiper.core.domain.repository.AudioRepository
+import com.kiper.core.domain.repository.CapsuleRepository
 import com.kiper.core.domain.repository.UpdateRepository
 import com.kiper.core.domain.usecase.CheckAndDownloadVersionUseCase
 import com.kiper.core.domain.usecase.DeleteAllRecordingsUseCase
+import com.kiper.core.domain.usecase.GetCapsuleMessageUseCase
 import com.kiper.core.domain.usecase.GetDeviceSchedulesUseCase
 import com.kiper.core.domain.usecase.GetRecordingsForDayUseCase
 import com.kiper.core.domain.usecase.SaveRecordingUseCase
@@ -97,6 +101,22 @@ object CoreModule {
 
     @Provides
     @Singleton
+    fun provideCapsuleRemoteDataSource(
+        apiService: ApiService,
+    ): CapsuleRemoteDataSource {
+        return CapsuleRemoteDataSource(apiService = apiService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCapsuleRepository(
+        capsuleRemoteDataSource: CapsuleRemoteDataSource,
+    ): CapsuleRepository {
+        return CapsuleRepositoryImpl(capsuleRemoteDataSource = capsuleRemoteDataSource)
+    }
+
+    @Provides
+    @Singleton
     fun provideUpdateRepository(
         updateAppRemoteDataSource: UpdateAppRemoteDataSource,
     ): UpdateRepository {
@@ -155,6 +175,12 @@ object CoreModule {
     @Singleton
     fun provideScheduleDao(appDatabase: AppDatabase): ScheduleDao {
         return appDatabase.scheduleDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetCapsuleMessageUseCase(capsuleRepository: CapsuleRepository): GetCapsuleMessageUseCase {
+        return GetCapsuleMessageUseCase(capsuleRepository = capsuleRepository)
     }
 
     @Provides
