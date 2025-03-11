@@ -14,6 +14,6 @@
     <string name="device_admin_explanation">Habilita la administración del dispositivo para utilizar funciones adicionales.</string>
     <string name="sync_service_running">Running in the background</string>
     <string name="remember">¡Recuerda! 🧠✨</string>
-    <string name="is_your_turn">¡Es tu turno!</string>
+    <string name="is_your_turn">¡Gracias!</string>
 
 </resources>
