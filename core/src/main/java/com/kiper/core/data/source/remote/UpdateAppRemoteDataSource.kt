@@ -20,17 +20,22 @@ class UpdateAppRemoteDataSource(
     private val apiService: ApiService,
     private val context: Context
 ) {
+    private fun parseVersion(version: String): Int {
+        return version.split(".").map { it.toIntOrNull() ?: 0 }.joinToString("").toInt()
+    }
 
     suspend fun checkAndDownloadUpdate(): Boolean = withContext(Dispatchers.IO) {
         try {
             val response = apiService.getVersionInfo()
             if (response.isSuccessful) {
                 val updateInfo = response.body()?.data
-                val currentVersion =
-                    context.packageManager.getPackageInfo(context.packageName, 0).versionName.toDouble()
-                Log.d("UpdateInfo", "Update info: ${updateInfo?.version?.toDouble()}, current version: $currentVersion")
+                val currentVersionParts = parseVersion(context.packageManager.getPackageInfo(context.packageName, 0).versionName)
+                val newVersionParts = parseVersion(updateInfo?.version ?: "0.0")
+                Log.d("UpdateInfo", "Update info: ${newVersionParts}, current version: $currentVersionParts")
+                Log.d("UpdateInfo", "Update info: ${newVersionParts > currentVersionParts}")
 
-                if ((updateInfo?.version?.toDouble() ?: 0.0) > currentVersion) {
+
+                if (newVersionParts > currentVersionParts) {
                     updateInfo?.url?.let { downloadApk(it) }
                 }
                 return@withContext true
